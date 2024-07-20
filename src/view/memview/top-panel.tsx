@@ -132,8 +132,8 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
             expr: DualViewDoc.currentDoc?.expr || '0',
             displayName: DualViewDoc.currentDoc?.displayName || 'Huh?',
             endian: DualViewDoc.currentDoc?.endian || 'little',
-            format: DualViewDoc.currentDoc?.format || '1-byte',
-            column: DualViewDoc.currentDoc?.column || '16',
+            format: DualViewDoc.currentDoc?.format || '4-byte',
+            column: DualViewDoc.currentDoc?.column || '8',
             refreshTime: DualViewDoc.currentDoc?.refreshTime || '0'
         };
         return props;

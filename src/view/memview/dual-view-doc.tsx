@@ -107,8 +107,8 @@ export class DualViewDoc {
         this.displayName = info.displayName;
         this.expr = info.expr;
         this.endian = info.endian ?? 'little';
-        this.format = info.format ?? '1-byte';
-        this.column = info.column ?? '16';
+        this.format = info.format ?? '4-byte';
+        this.column = info.column ?? '8';
         this.refreshTime = info.refreshTime ?? '0';
         this.keepRefresh = info.keepRefresh ?? false;
         this.wsFolder = info.wsFolder;
