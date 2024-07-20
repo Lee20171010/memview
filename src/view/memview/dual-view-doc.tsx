@@ -26,6 +26,7 @@ import {
     UnknownDocId,
     EndianType,
     RowFormatType,
+    ColFormatType,
     IModifiableProps
 } from './shared';
 import { hexFmt64 } from './utils';
@@ -80,6 +81,7 @@ export class DualViewDoc {
     public expr: string;
     public endian: EndianType;
     public format: RowFormatType;
+    public column: ColFormatType;
     public isReadonly: boolean;
     public readonly docId: string;
     public sessionId: string;
@@ -101,6 +103,7 @@ export class DualViewDoc {
         this.expr = info.expr;
         this.endian = info.endian ?? 'little';
         this.format = info.format ?? '1-byte';
+        this.column = info.column ?? '16';
         this.wsFolder = info.wsFolder;
         this.sessionId = info.sessionId;
         this.sessionName = info.sessionName;
@@ -162,6 +165,7 @@ export class DualViewDoc {
         this.displayName = settings.displayName;
         this.endian = settings.endian;
         this.format = settings.format;
+        this.column = settings.column;
         // Now everything is out of sync. Requires a total re-render it is the callers responsibility to do that
     }
 
@@ -545,6 +549,7 @@ export class DualViewDoc {
             expr: this.expr,
             endian: this.endian,
             format: this.format,
+            column: this.column,
             wsFolder: this.wsFolder,
             startAddress: this.startAddress.toString(),
             maxBytes: Number(this.maxAddress - this.startAddress),
@@ -608,6 +613,7 @@ export class DualViewDoc {
             startAddress: '0',
             endian: 'little',
             format: '1-byte',
+            column: '16',
             maxBytes: initString.length,
             isCurrentDoc: true,
             clientState: {},

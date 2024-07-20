@@ -16,6 +16,7 @@ import {
     ICmdSettingsChanged,
     IModifiableProps,
     RowFormatType,
+    ColFormatType,
     UnknownDocId
 } from './shared';
 import { SelContext } from './selection';
@@ -130,7 +131,8 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
             expr: DualViewDoc.currentDoc?.expr || '0',
             displayName: DualViewDoc.currentDoc?.displayName || 'Huh?',
             endian: DualViewDoc.currentDoc?.endian || 'little',
-            format: DualViewDoc.currentDoc?.format || '1-byte'
+            format: DualViewDoc.currentDoc?.format || '1-byte',
+            column: DualViewDoc.currentDoc?.column || '16'
         };
         return props;
     }
@@ -280,6 +282,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
     private displayNameRef = React.createRef<any>();
     private endian: string;
     private format: string;
+    private column: string;
 
     constructor(props: IViewSettingsProps) {
         super(props);
@@ -291,6 +294,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
         };
         this.endian = props.settings.endian;
         this.format = props.settings.format;
+        this.column = props.settings.column;
         ViewSettings.GlobalPtr = this;
     }
 
@@ -304,6 +308,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
         });
         this.GlobalPtr.endian = settings.endian;
         this.GlobalPtr.format = settings.format;
+        this.GlobalPtr.column = settings.column;
     }
 
     private onClickCloseFunc = this.onClickClose.bind(this);
@@ -342,6 +347,11 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
             ret.format = this.format as RowFormatType;
             changed = true;
         }
+        
+        if (ret.column !== this.column) {
+            ret.column = this.column as ColFormatType;
+            changed = true;
+        }
 
         this.props.onDone(changed ? ret : undefined);
     }
@@ -354,6 +364,11 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
     private onFormatChangeFunc = this.onFormatChange.bind(this);
     private onFormatChange(e: any) {
         this.format = e.target.value;
+    }
+
+    private onColumnChangeFunc = this.onColumnChange.bind(this);
+    private onColumnChange(e: any) {
+        this.column = e.target.value;
     }
 
     render(): React.ReactNode {
@@ -434,6 +449,45 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                             <VSCodeOption key={key++} value='big'>
                                 Big
                             </VSCodeOption>
+                        </VSCodeDropdown>
+                    </div>
+                    <div key={key++} className='dropdown-label-div'>
+                        <label key={key++} className='dropdown-label'>
+                            Column
+                        </label>
+                        <VSCodeDropdown key={key++} value={this.column} onChange={this.onColumnChangeFunc}>
+                            <VSCodeOption key={key++} value='1'> 1 </VSCodeOption>
+                            <VSCodeOption key={key++} value='2'> 2 </VSCodeOption>
+                            <VSCodeOption key={key++} value='3'> 3 </VSCodeOption>
+                            <VSCodeOption key={key++} value='4'> 4 </VSCodeOption>
+                            <VSCodeOption key={key++} value='5'> 5 </VSCodeOption>
+                            <VSCodeOption key={key++} value='6'> 6 </VSCodeOption>
+                            <VSCodeOption key={key++} value='7'> 7 </VSCodeOption>
+                            <VSCodeOption key={key++} value='8'> 8 </VSCodeOption>
+                            <VSCodeOption key={key++} value='9'> 9 </VSCodeOption>
+                            <VSCodeOption key={key++} value='10'> 10 </VSCodeOption>
+                            <VSCodeOption key={key++} value='11'> 11 </VSCodeOption>
+                            <VSCodeOption key={key++} value='12'> 12 </VSCodeOption>
+                            <VSCodeOption key={key++} value='13'> 13 </VSCodeOption>
+                            <VSCodeOption key={key++} value='14'> 14 </VSCodeOption>
+                            <VSCodeOption key={key++} value='15'> 15 </VSCodeOption>
+                            <VSCodeOption key={key++} value='16'> 16 </VSCodeOption>
+                            <VSCodeOption key={key++} value='17'> 17 </VSCodeOption>
+                            <VSCodeOption key={key++} value='18'> 18 </VSCodeOption>
+                            <VSCodeOption key={key++} value='19'> 19 </VSCodeOption>
+                            <VSCodeOption key={key++} value='20'> 20 </VSCodeOption>
+                            <VSCodeOption key={key++} value='21'> 21 </VSCodeOption>
+                            <VSCodeOption key={key++} value='22'> 22 </VSCodeOption>
+                            <VSCodeOption key={key++} value='23'> 23 </VSCodeOption>
+                            <VSCodeOption key={key++} value='24'> 24 </VSCodeOption>
+                            <VSCodeOption key={key++} value='25'> 25 </VSCodeOption>
+                            <VSCodeOption key={key++} value='26'> 26 </VSCodeOption>
+                            <VSCodeOption key={key++} value='27'> 27 </VSCodeOption>
+                            <VSCodeOption key={key++} value='28'> 28 </VSCodeOption>
+                            <VSCodeOption key={key++} value='29'> 29 </VSCodeOption>
+                            <VSCodeOption key={key++} value='30'> 30 </VSCodeOption>
+                            <VSCodeOption key={key++} value='31'> 31 </VSCodeOption>
+                            <VSCodeOption key={key++} value='32'> 32 </VSCodeOption>
                         </VSCodeDropdown>
                     </div>
                     <div key={key++} style={{ marginTop: '10px' }}>

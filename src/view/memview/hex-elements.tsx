@@ -324,10 +324,11 @@ export interface IHexHeaderRow {
 
 export function HexHeaderRow(props: IHexHeaderRow): JSX.Element {
     const fmt = DualViewDoc.currentDoc?.format;
+    const col = DualViewDoc.currentDoc?.column;
     const bytesPerCell = fmt === '1-byte' ? 1 : fmt === '2-byte' ? 2 : fmt === '4-byte' ? 4 : 8;
     const classNames = `hex-header-row scrollHorizontalSync ${props.cls || ''}`;
     const addrCells: JSX.Element[] = [];
-    const bytesInRow = bytesPerCell === 1 ? 16 : 32;
+    const bytesInRow = (col === undefined) ? 16 : Number(col) * bytesPerCell;
 
     let key = 2;
     for (let ix = 0; ix < bytesInRow; ix += bytesPerCell) {
@@ -382,6 +383,7 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
     constructor(public props: IHexDataRow) {
         super(props);
         const fmt = DualViewDoc.currentDoc?.format;
+        const col = DualViewDoc.currentDoc?.column;
         if (HexDataRow.byteOrder.length === 0) {
             HexDataRow.bytePerWord = fmt === '1-byte' ? 1 : fmt === '2-byte' ? 2 : fmt === '4-byte' ? 4 : 8;
             HexDataRow.isBigEndian = DualViewDoc.currentDoc?.endian === 'big';
@@ -395,7 +397,7 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
                 }
             }
         }
-        this.bytesInRow = HexDataRow.bytePerWord === 1 ? 16 : 32;
+        this.bytesInRow = Number(col) * HexDataRow.bytePerWord;
         const bytes = [];
         for (let ix = 0; ix < this.bytesInRow; ix++) {
             bytes[ix] = DummyByte;
@@ -463,15 +465,21 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
             // so do it the fast way, since the bytes should have been loaded by now
             let bytes: IMemValue[] = [];
             const p = [];
-            for (let row = 0; row < this.bytesInRow / 16; row++) {
-                const addr = this.props.address + BigInt(16 * row);
+            const byteOrWord = HexDataRow.bytePerWord === 1 ? 16n : 32n;
+            let baseAddr = DualViewDoc.currentDoc?.baseAddress || 0n;
+            baseAddr = baseAddr + (this.props.address - baseAddr) / byteOrWord * BigInt(this.bytesInRow); // Consider custom columns
+            const startByte = Number(baseAddr % 16n); // Consider read must align slot
+
+            for (let row = 0; row < Math.ceil((this.bytesInRow + startByte) / 16); row++) {
+                const addr = baseAddr + BigInt(16 * row);
                 p.push(DualViewDoc.getCurrentDocByte(addr));
             }
             await Promise.all(p);
-            for (let row = 0; row < this.bytesInRow / 16; row++) {
-                const addr = this.props.address + BigInt(16 * row);
+            for (let row = 0; row < Math.ceil((this.bytesInRow + startByte) / 16); row++) {
+                const addr = baseAddr + BigInt(16 * row);
                 bytes = bytes.concat(DualViewDoc.getRowUnsafe(addr));
             }
+            bytes = bytes.slice(startByte);
             const words = this.convertToWords(bytes);
             this.setState({ bytes: bytes, words: words });
         }
@@ -522,9 +530,12 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
         const classNames = `hex-data-row r${addrStr} ` + (this.props.cls || '');
         const values = [];
         const chars = [];
+        const byteOrWord = HexDataRow.bytePerWord === 1 ? 16n : 32n;
+        let baseAddr = DualViewDoc.currentDoc?.baseAddress || 0n;
+        baseAddr = baseAddr + (this.props.address - baseAddr) / byteOrWord * BigInt(this.bytesInRow); // Consider custom columns
         let key = 1;
         for (let ix = 0; ix < this.bytesInRow / HexDataRow.bytePerWord; ix++) {
-            const addr = this.props.address + BigInt(ix * HexDataRow.bytePerWord);
+            const addr = baseAddr + BigInt(ix * HexDataRow.bytePerWord);
             values.push(
                 <HexCellValue
                     bytesPerCell={HexDataRow.bytePerWord}
@@ -540,7 +551,7 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
         }
         return (
             <div className={classNames} style={this.props.style || ''} ref={this.myRef}>
-                <HexCellAddress key={100} address={this.props.address} />
+                <HexCellAddress key={100} address={baseAddr} />
                 {values}
                 <HexCellEmpty key={101} length={1} fillChar='.' cls='hex-cell-invisible' />
                 {chars}
