@@ -296,6 +296,8 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             endian: 'little',
             format: '1-byte',
             column: '16',
+            refreshTime: '0',
+            keepRefresh: false,
             isReadOnly: !sessionInfo?.canWriteMemory,
             clientState: {},
             baseAddressStale: true,
@@ -548,7 +550,25 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                                 break;
                             }
                             case 'refresh': {
-                                DualViewDoc.markAllDocsStale();
+                                const doc = DualViewDoc.currentDoc;
+                                if (doc && doc.refreshTime !== '0') {
+                                    if (doc && doc.refreshTimer !== undefined) {
+                                        clearInterval(doc.refreshTimer);
+                                        doc.refreshTimer = undefined;
+                                        doc.refreshDoc = undefined;
+                                        doc.keepRefresh = false;
+                                    } else if (doc && doc.refreshTimer === undefined){
+                                        doc.refreshDoc = doc;
+                                        doc.refreshTimer = setInterval(()=> {
+                                            if (DualViewDoc.currentDoc && (DualViewDoc.currentDoc.refreshDoc === doc.refreshDoc)) {
+                                                DualViewDoc.markDocsStale(doc.refreshDoc);
+                                                this.updateHtmlForInit();
+                                            }
+                                        }, Number(doc.refreshTime) * 1000);
+                                        doc.keepRefresh = true;
+                                    }
+                                }
+                                DualViewDoc.markDocsStale(doc);
                                 this.updateHtmlForInit();
                                 break;
                             }
@@ -667,6 +687,8 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                 endian: 'little',
                 format: '1-byte',
                 column: '16',
+                refreshTime: '0',
+                keepRefresh: false,
                 wsFolder: session.workspaceFolder?.uri.toString() || '.',
                 startAddress: addr,
                 isReadOnly: !sessonInfo.canWriteMemory,
@@ -803,6 +825,8 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             format: '1-byte',
             endian: 'little',
             column: '16',
+            refreshTime: '0',
+            keepRefresh: false,
             wsFolder: '.',
             startAddress: '0',
             isReadOnly: false,

@@ -1,4 +1,4 @@
-import { IMemPages } from './dual-view-doc';
+import { DualViewDoc, IMemPages } from './dual-view-doc';
 
 export const UnknownDocId = 'Unknown';
 
@@ -80,6 +80,7 @@ export type RowFormatType = '1-byte' | '2-byte' | '4-byte' | '8-byte';
 export type EndianType = 'little' | 'big';
 export type ColFormatType = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | '11' | '12' | '13' | '14' | '15' | '16' |
                             '17' | '18' | '19' | '20' | '21' | '22' | '23' | '24' | '25' | '26' | '27' | '28' | '29' | '30' | '31' | '32';
+export type RefreshTimeType = '0' | '1'  | '5' | '10' | '60';
 
 export interface IModifiableProps {
     expr: string;
@@ -87,6 +88,7 @@ export interface IModifiableProps {
     endian: EndianType;
     format: RowFormatType;
     column: ColFormatType;
+    refreshTime: RefreshTimeType;
 }
 export interface IWebviewDocInfo {
     displayName: string;
@@ -116,6 +118,8 @@ export interface IWebviewDocXfer {
     format: RowFormatType;
     endian: EndianType;
     column: ColFormatType;
+    refreshTime: RefreshTimeType;
+    keepRefresh: boolean;
     isCurrentDoc?: boolean;
     maxBytes?: number;
     modifiedMap?: ModifiedXferMap;

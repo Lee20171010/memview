@@ -27,6 +27,7 @@ import {
     EndianType,
     RowFormatType,
     ColFormatType,
+    RefreshTimeType,
     IModifiableProps
 } from './shared';
 import { hexFmt64 } from './utils';
@@ -82,6 +83,10 @@ export class DualViewDoc {
     public endian: EndianType;
     public format: RowFormatType;
     public column: ColFormatType;
+    public refreshTime: RefreshTimeType;
+    public refreshTimer: NodeJS.Timer | undefined;
+    public refreshDoc: DualViewDoc | undefined;
+    public keepRefresh: boolean;
     public isReadonly: boolean;
     public readonly docId: string;
     public sessionId: string;
@@ -104,6 +109,8 @@ export class DualViewDoc {
         this.endian = info.endian ?? 'little';
         this.format = info.format ?? '1-byte';
         this.column = info.column ?? '16';
+        this.refreshTime = info.refreshTime ?? '0';
+        this.keepRefresh = info.keepRefresh ?? false;
         this.wsFolder = info.wsFolder;
         this.sessionId = info.sessionId;
         this.sessionName = info.sessionName;
@@ -166,6 +173,7 @@ export class DualViewDoc {
         this.endian = settings.endian;
         this.format = settings.format;
         this.column = settings.column;
+        this.refreshTime = settings.refreshTime;
         // Now everything is out of sync. Requires a total re-render it is the callers responsibility to do that
     }
 
@@ -296,6 +304,12 @@ export class DualViewDoc {
     public markAsStale() {
         this.startAddressStale = true;
         this.memory.markAllStale();
+    }
+
+    public static markDocsStale(doc : DualViewDoc | undefined) {
+        if (doc){
+            doc.markAsStale();
+        }
     }
 
     public static markAllDocsStale() {
@@ -550,6 +564,8 @@ export class DualViewDoc {
             endian: this.endian,
             format: this.format,
             column: this.column,
+            refreshTime: this.refreshTime,
+            keepRefresh: this.keepRefresh,
             wsFolder: this.wsFolder,
             startAddress: this.startAddress.toString(),
             maxBytes: Number(this.maxAddress - this.startAddress),
@@ -614,6 +630,8 @@ export class DualViewDoc {
             endian: 'little',
             format: '1-byte',
             column: '16',
+            refreshTime: '0',
+            keepRefresh: false,
             maxBytes: initString.length,
             isCurrentDoc: true,
             clientState: {},

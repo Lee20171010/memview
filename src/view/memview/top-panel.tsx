@@ -17,6 +17,7 @@ import {
     IModifiableProps,
     RowFormatType,
     ColFormatType,
+    RefreshTimeType,
     UnknownDocId
 } from './shared';
 import { SelContext } from './selection';
@@ -132,7 +133,8 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
             displayName: DualViewDoc.currentDoc?.displayName || 'Huh?',
             endian: DualViewDoc.currentDoc?.endian || 'little',
             format: DualViewDoc.currentDoc?.format || '1-byte',
-            column: DualViewDoc.currentDoc?.column || '16'
+            column: DualViewDoc.currentDoc?.column || '16',
+            refreshTime: DualViewDoc.currentDoc?.refreshTime || '0'
         };
         return props;
     }
@@ -195,6 +197,8 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
             'Copy to clipboard.\nHold ' +
             (navigator.platform.startsWith('Mac') ? '⌥' : 'Alt') +
             ' for Copy All to clipboard';
+        const refreshIcon = (DualViewDoc.currentDoc?.keepRefresh) ? 'codicon codicon-stop-circle' : 'codicon codicon-refresh';
+        const refreshHelp = (DualViewDoc.currentDoc?.keepRefresh) ? 'Keep refreshing. Press again to stop' : 'Refresh this panel. New data is fetched if debugger is stopped';
         return (
             <div className='toolbar' style={{ width: 'auto' }}>
                 <VSCodeDropdown
@@ -240,8 +244,8 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
                 </VSCodeButton>
                 <VSCodeButton key={key++} appearance='icon' onClick={this.onClickRefreshFunc}>
                     <span
-                        className='codicon codicon-refresh'
-                        title='Refresh this panel. New data is fetched if debugger is stopped'
+                        className={refreshIcon}
+                        title={refreshHelp}
                     ></span>
                 </VSCodeButton>
                 <VSCodeButton key={key++} appearance='icon' onClick={this.onClickSettingsFunc}>
@@ -283,6 +287,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
     private endian: string;
     private format: string;
     private column: string;
+    private refreshTime: string;
 
     constructor(props: IViewSettingsProps) {
         super(props);
@@ -295,6 +300,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
         this.endian = props.settings.endian;
         this.format = props.settings.format;
         this.column = props.settings.column;
+        this.refreshTime = props.settings.refreshTime;
         ViewSettings.GlobalPtr = this;
     }
 
@@ -309,6 +315,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
         this.GlobalPtr.endian = settings.endian;
         this.GlobalPtr.format = settings.format;
         this.GlobalPtr.column = settings.column;
+        this.GlobalPtr.refreshTime = settings.refreshTime;
     }
 
     private onClickCloseFunc = this.onClickClose.bind(this);
@@ -352,6 +359,11 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
             ret.column = this.column as ColFormatType;
             changed = true;
         }
+        
+        if (ret.refreshTime !== this.refreshTime) {
+            ret.refreshTime = this.refreshTime as RefreshTimeType;
+            changed = true;
+        }
 
         this.props.onDone(changed ? ret : undefined);
     }
@@ -369,6 +381,11 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
     private onColumnChangeFunc = this.onColumnChange.bind(this);
     private onColumnChange(e: any) {
         this.column = e.target.value;
+    }
+
+    private onRefreshTimeChangeFunc = this.onRefreshTimeChange.bind(this);
+    private onRefreshTimeChange(e: any) {
+        this.refreshTime = e.target.value;
     }
 
     render(): React.ReactNode {
@@ -488,6 +505,18 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                             <VSCodeOption key={key++} value='30'> 30 </VSCodeOption>
                             <VSCodeOption key={key++} value='31'> 31 </VSCodeOption>
                             <VSCodeOption key={key++} value='32'> 32 </VSCodeOption>
+                        </VSCodeDropdown>
+                    </div>
+                    <div key={key++} className='dropdown-label-div'>
+                        <label key={key++} className='dropdown-label'>
+                            Refresh Time
+                        </label>
+                        <VSCodeDropdown key={key++} value={this.refreshTime} onChange={this.onRefreshTimeChangeFunc}>
+                            <VSCodeOption key={key++} value='0'> 0 immediate </VSCodeOption>
+                            <VSCodeOption key={key++} value='1'> 1 second </VSCodeOption>
+                            <VSCodeOption key={key++} value='5'> 5 second </VSCodeOption>
+                            <VSCodeOption key={key++} value='10'> 10 second </VSCodeOption>
+                            <VSCodeOption key={key++} value='60'> 60 second</VSCodeOption>
                         </VSCodeDropdown>
                     </div>
                     <div key={key++} style={{ marginTop: '10px' }}>
