@@ -26,8 +26,6 @@ import {
     UnknownDocId,
     EndianType,
     RowFormatType,
-    ColFormatType,
-    RefreshTimeType,
     IModifiableProps
 } from './shared';
 import { hexFmt64 } from './utils';
@@ -82,8 +80,8 @@ export class DualViewDoc {
     public expr: string;
     public endian: EndianType;
     public format: RowFormatType;
-    public column: ColFormatType;
-    public refreshTime: RefreshTimeType;
+    public column: string;
+    public refreshPeriod: string;
     public refreshTimer: NodeJS.Timer | undefined;
     public refreshDoc: DualViewDoc | undefined;
     public keepRefresh: boolean;
@@ -109,7 +107,7 @@ export class DualViewDoc {
         this.endian = info.endian ?? 'little';
         this.format = info.format ?? '4-byte';
         this.column = info.column ?? '8';
-        this.refreshTime = info.refreshTime ?? '0';
+        this.refreshPeriod = info.refreshPeriod ?? '0';
         this.keepRefresh = info.keepRefresh ?? false;
         this.wsFolder = info.wsFolder;
         this.sessionId = info.sessionId;
@@ -173,7 +171,7 @@ export class DualViewDoc {
         this.endian = settings.endian;
         this.format = settings.format;
         this.column = settings.column;
-        this.refreshTime = settings.refreshTime;
+        this.refreshPeriod = settings.refreshPeriod;
         // Now everything is out of sync. Requires a total re-render it is the callers responsibility to do that
     }
 
@@ -564,7 +562,7 @@ export class DualViewDoc {
             endian: this.endian,
             format: this.format,
             column: this.column,
-            refreshTime: this.refreshTime,
+            refreshPeriod: this.refreshPeriod,
             keepRefresh: this.keepRefresh,
             wsFolder: this.wsFolder,
             startAddress: this.startAddress.toString(),
@@ -630,7 +628,7 @@ export class DualViewDoc {
             endian: 'little',
             format: '1-byte',
             column: '16',
-            refreshTime: '0',
+            refreshPeriod: '0',
             keepRefresh: false,
             maxBytes: initString.length,
             isCurrentDoc: true,

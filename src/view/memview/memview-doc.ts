@@ -296,7 +296,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             endian: 'little',
             format: '4-byte',
             column: '8',
-            refreshTime: '0',
+            refreshPeriod: '0',
             keepRefresh: false,
             isReadOnly: !sessionInfo?.canWriteMemory,
             clientState: {},
@@ -551,7 +551,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                             }
                             case 'refresh': {
                                 const doc = DualViewDoc.currentDoc;
-                                if (doc && doc.refreshTime !== '0') {
+                                if (doc && (doc.refreshPeriod !== '0')) {
                                     if (doc && doc.refreshTimer !== undefined) {
                                         clearInterval(doc.refreshTimer);
                                         doc.refreshTimer = undefined;
@@ -564,7 +564,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                                                 DualViewDoc.markDocsStale(doc.refreshDoc);
                                                 this.updateHtmlForInit();
                                             }
-                                        }, Number(doc.refreshTime) * 1000);
+                                        }, Number(doc.refreshPeriod) * 1000);
                                         doc.keepRefresh = true;
                                     }
                                 }
@@ -687,7 +687,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                 endian: 'little',
                 format: '4-byte',
                 column: '8',
-                refreshTime: '0',
+                refreshPeriod: '0',
                 keepRefresh: false,
                 wsFolder: session.workspaceFolder?.uri.toString() || '.',
                 startAddress: addr,
@@ -825,7 +825,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             format: '4-byte',
             endian: 'little',
             column: '8',
-            refreshTime: '0',
+            refreshPeriod: '0',
             keepRefresh: false,
             wsFolder: '.',
             startAddress: '0',

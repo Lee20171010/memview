@@ -16,8 +16,6 @@ import {
     ICmdSettingsChanged,
     IModifiableProps,
     RowFormatType,
-    ColFormatType,
-    RefreshTimeType,
     UnknownDocId
 } from './shared';
 import { SelContext } from './selection';
@@ -134,7 +132,7 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
             endian: DualViewDoc.currentDoc?.endian || 'little',
             format: DualViewDoc.currentDoc?.format || '4-byte',
             column: DualViewDoc.currentDoc?.column || '8',
-            refreshTime: DualViewDoc.currentDoc?.refreshTime || '0'
+            refreshPeriod: DualViewDoc.currentDoc?.refreshPeriod || '0'
         };
         return props;
     }
@@ -287,7 +285,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
     private endian: string;
     private format: string;
     private column: string;
-    private refreshTime: string;
+    private refreshPeriod: string;
 
     constructor(props: IViewSettingsProps) {
         super(props);
@@ -300,7 +298,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
         this.endian = props.settings.endian;
         this.format = props.settings.format;
         this.column = props.settings.column;
-        this.refreshTime = props.settings.refreshTime;
+        this.refreshPeriod = props.settings.refreshPeriod;
         ViewSettings.GlobalPtr = this;
     }
 
@@ -315,7 +313,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
         this.GlobalPtr.endian = settings.endian;
         this.GlobalPtr.format = settings.format;
         this.GlobalPtr.column = settings.column;
-        this.GlobalPtr.refreshTime = settings.refreshTime;
+        this.GlobalPtr.refreshPeriod = settings.refreshPeriod;
     }
 
     private onClickCloseFunc = this.onClickClose.bind(this);
@@ -356,12 +354,12 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
         }
         
         if (ret.column !== this.column) {
-            ret.column = this.column as ColFormatType;
+            ret.column = this.column;
             changed = true;
         }
         
-        if (ret.refreshTime !== this.refreshTime) {
-            ret.refreshTime = this.refreshTime as RefreshTimeType;
+        if (ret.refreshPeriod !== this.refreshPeriod) {
+            ret.refreshPeriod = this.refreshPeriod;
             changed = true;
         }
 
@@ -380,12 +378,16 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
 
     private onColumnChangeFunc = this.onColumnChange.bind(this);
     private onColumnChange(e: any) {
-        this.column = e.target.value;
+        if ((Number(e.target.value) !== undefined) && (isNaN(Number(e.target.value)) === false)) {
+            this.column = e.target.value;
+        }
     }
 
     private onRefreshTimeChangeFunc = this.onRefreshTimeChange.bind(this);
     private onRefreshTimeChange(e: any) {
-        this.refreshTime = e.target.value;
+        if ((Number(e.target.value) !== undefined) && (isNaN(Number(e.target.value)) === false)) {
+            this.refreshPeriod = e.target.value;
+        }
     }
 
     render(): React.ReactNode {
@@ -398,7 +400,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                     className='popup'
                     id='view-settings'
                     style={{
-                        width: `${bigLabel.length + 5}ch`,
+                        width: `${bigLabel.length + 10}ch`,
                         // top: this.state.clientY,
                         top: 0,
                         left: this.state.clientX
@@ -472,53 +474,32 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                         <label key={key++} className='dropdown-label'>
                             Column
                         </label>
-                        <VSCodeDropdown key={key++} value={this.column} onChange={this.onColumnChangeFunc}>
-                            <VSCodeOption key={key++} value='1'> 1 </VSCodeOption>
-                            <VSCodeOption key={key++} value='2'> 2 </VSCodeOption>
-                            <VSCodeOption key={key++} value='3'> 3 </VSCodeOption>
-                            <VSCodeOption key={key++} value='4'> 4 </VSCodeOption>
-                            <VSCodeOption key={key++} value='5'> 5 </VSCodeOption>
-                            <VSCodeOption key={key++} value='6'> 6 </VSCodeOption>
-                            <VSCodeOption key={key++} value='7'> 7 </VSCodeOption>
-                            <VSCodeOption key={key++} value='8'> 8 </VSCodeOption>
-                            <VSCodeOption key={key++} value='9'> 9 </VSCodeOption>
-                            <VSCodeOption key={key++} value='10'> 10 </VSCodeOption>
-                            <VSCodeOption key={key++} value='11'> 11 </VSCodeOption>
-                            <VSCodeOption key={key++} value='12'> 12 </VSCodeOption>
-                            <VSCodeOption key={key++} value='13'> 13 </VSCodeOption>
-                            <VSCodeOption key={key++} value='14'> 14 </VSCodeOption>
-                            <VSCodeOption key={key++} value='15'> 15 </VSCodeOption>
-                            <VSCodeOption key={key++} value='16'> 16 </VSCodeOption>
-                            <VSCodeOption key={key++} value='17'> 17 </VSCodeOption>
-                            <VSCodeOption key={key++} value='18'> 18 </VSCodeOption>
-                            <VSCodeOption key={key++} value='19'> 19 </VSCodeOption>
-                            <VSCodeOption key={key++} value='20'> 20 </VSCodeOption>
-                            <VSCodeOption key={key++} value='21'> 21 </VSCodeOption>
-                            <VSCodeOption key={key++} value='22'> 22 </VSCodeOption>
-                            <VSCodeOption key={key++} value='23'> 23 </VSCodeOption>
-                            <VSCodeOption key={key++} value='24'> 24 </VSCodeOption>
-                            <VSCodeOption key={key++} value='25'> 25 </VSCodeOption>
-                            <VSCodeOption key={key++} value='26'> 26 </VSCodeOption>
-                            <VSCodeOption key={key++} value='27'> 27 </VSCodeOption>
-                            <VSCodeOption key={key++} value='28'> 28 </VSCodeOption>
-                            <VSCodeOption key={key++} value='29'> 29 </VSCodeOption>
-                            <VSCodeOption key={key++} value='30'> 30 </VSCodeOption>
-                            <VSCodeOption key={key++} value='31'> 31 </VSCodeOption>
-                            <VSCodeOption key={key++} value='32'> 32 </VSCodeOption>
-                        </VSCodeDropdown>
+                        <VSCodeTextField
+                            key={key++}
+                            name='Column'
+                            type='text'
+                            style={{ width: '10%' }}
+                            value={this.column}
+                            onChange={this.onColumnChangeFunc}
+                        >
+                        </VSCodeTextField>
                     </div>
                     <div key={key++} className='dropdown-label-div'>
                         <label key={key++} className='dropdown-label'>
-                            Refresh Time
+                            Refresh Period
                         </label>
-                        <VSCodeDropdown key={key++} value={this.refreshTime} onChange={this.onRefreshTimeChangeFunc}>
-                            <VSCodeOption key={key++} value='0'> 0 immediate </VSCodeOption>
-                            <VSCodeOption key={key++} value='1'> 1 second </VSCodeOption>
-                            <VSCodeOption key={key++} value='5'> 5 second </VSCodeOption>
-                            <VSCodeOption key={key++} value='10'> 10 second </VSCodeOption>
-                            <VSCodeOption key={key++} value='60'> 60 second</VSCodeOption>
-                        </VSCodeDropdown>
+                        <VSCodeTextField
+                            key={key++}
+                            name='refreshPeriod'
+                            type='text'
+                            style={{ width: '10%' }}
+                            disabled={DualViewDoc.currentDoc?.keepRefresh}
+                            value={this.refreshPeriod}
+                            onChange={this.onRefreshTimeChangeFunc}
+                        >
+                        </VSCodeTextField>
                     </div>
+                    <br key={key++}></br>
                     <div key={key++} style={{ marginTop: '10px' }}>
                         <VSCodeDropdown key={key++} style={{ width: '25ch' }}>
                             <VSCodeOption key={key++} value='view'>
