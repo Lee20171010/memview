@@ -389,7 +389,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                     className='popup'
                     id='view-settings'
                     style={{
-                        width: `${bigLabel.length + 20}ch`,
+                        width: `${bigLabel.length + 30}ch`,
                         // top: this.state.clientY,
                         top: 0,
                         left: this.state.clientX
