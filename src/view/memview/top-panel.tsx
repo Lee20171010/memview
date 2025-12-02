@@ -14,7 +14,9 @@ import {
     EndianType,
     ICmdButtonClick,
     ICmdSettingsChanged,
+    ICmdAddMemoryView,
     IModifiableProps,
+    IAddMemoryInfo,
     RowFormatType,
     UnknownDocId
 } from './shared';
@@ -86,8 +88,20 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
     }
 
     private onClickAddFunc = this.onClickAdd.bind(this);
-    private onClickAdd() {
-        vscodePostCommandNoResponse(this.createCmd('new'));
+    private onClickAdd(event: any) {
+        AddPopupView.open(event);
+    }
+    private onAddInputDoneFunc = this.onAddInputDone.bind(this);
+    private onAddInputDone(info: IAddMemoryInfo | undefined) {
+        if (info && DualViewDoc.currentDoc) {
+            const cmd: ICmdAddMemoryView = {
+                info: info,
+                type: CmdType.AddNewMemoryView,
+                sessionId: DualViewDoc.currentDoc.sessionId,
+                docId: DualViewDoc.currentDoc.docId
+            };
+            vscodePostCommandNoResponse(cmd);
+        }
     }
 
     private onClickCloseFunc = this.onClickClose.bind(this);
@@ -190,6 +204,9 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
             settings: this.getViewProps(),
             onDone: this.onEditPropsDoneFunc
         };
+        const addProps: IAddPopupViewProps = {
+            onDone: this.onAddInputDoneFunc
+        };
         let key = 0;
         const copyHelp =
             'Copy to clipboard.\nHold ' +
@@ -260,6 +277,7 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
                 </VSCodeButton>
                 <VSCodeDivider key={key++} role='presentation'></VSCodeDivider>
                 <ViewSettings {...editProps}></ViewSettings>
+                <AddPopupView {...addProps}></AddPopupView>
             </div>
         );
     }
@@ -501,6 +519,148 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                                 Apply To: User Settings
                             </VSCodeOption>
                         </VSCodeDropdown>
+                        <VSCodeButton
+                            key={key++}
+                            appearance='primary'
+                            style={{ float: 'right', paddingRight: '1ch' }}
+                            onClick={this.onClickOkayFunc}
+                        >
+                            Ok
+                        </VSCodeButton>
+                        <VSCodeButton
+                            key={key++}
+                            appearance='secondary'
+                            style={{ float: 'right', marginRight: '10px' }}
+                            onClick={this.onClickCloseFunc}
+                        >
+                            Cancel
+                        </VSCodeButton>
+                    </div>
+                </div>
+                <div className='popup-background' onClick={this.onClickCloseFunc}></div>
+            </div>
+        );
+    }
+}
+
+interface IAddPopupViewProps {
+    onDone: (info: IAddMemoryInfo | undefined) => void;
+}
+
+interface IAddPopupViewState {
+    isOpen: boolean;
+    clientX: number;
+    clientY: number;
+}
+export class AddPopupView extends React.Component<IAddPopupViewProps, IAddPopupViewState> {
+    static GlobalPtr: AddPopupView;
+    private exprRef = React.createRef<any>();
+    private sizeRef = React.createRef<any>();
+
+    constructor(props: IAddPopupViewProps) {
+        super(props);
+        this.state = {
+            isOpen: false,
+            clientX: 0,
+            clientY: 0
+        };
+        AddPopupView.GlobalPtr = this;
+    }
+
+    static open(event: any) {
+        event.preventDefault();
+        this.GlobalPtr.setState({
+            isOpen: true,
+            clientX: event.clientX,
+            clientY: event.clientY
+        });
+    }
+
+    private onClickCloseFunc = this.onClickClose.bind(this);
+    private onClickClose(event: any) {
+        event && event.preventDefault();
+        this.setState({
+            isOpen: false
+        });
+        this.props.onDone(undefined);
+    }
+
+    private onClickOkayFunc = this.onClickOkay.bind(this);
+    private onClickOkay(event: any) {
+        event && event.preventDefault();
+        this.setState({
+            isOpen: false
+        });
+
+        const expr = this.exprRef.current.value.trim();
+        const size = this.sizeRef.current.value.trim();
+
+        if (expr && size) {
+            const ret: IAddMemoryInfo = { expr: expr, size: size };
+            this.props.onDone(ret);
+        } else {
+            this.props.onDone(undefined);
+        }
+    }
+
+    private onKeyDownFunc = this.onKeyDown.bind(this);
+    private onKeyDown(event: any) {
+        if (event.key === 'Enter') {
+            this.onClickOkayFunc(event);
+        } else if (event.key === 'Escape') {
+            this.onClickCloseFunc(event);
+        }
+    }
+
+    render(): React.ReactNode {
+        let key = 0;
+        const bigLabel = 'Address: Hex/decimal constant or expression';
+        return (
+            <div key={key++} style={{ display: +this.state.isOpen ? '' : 'none' }}>
+                <div
+                    key={key++}
+                    className='popup'
+                    id='add-popup-view'
+                    style={{
+                        width: `${bigLabel.length + 5}ch`,
+                        top: 0,
+                        left: this.state.clientX
+                    }}
+                >
+                    <VSCodeButton
+                        key={key++}
+                        appearance='icon'
+                        style={{ float: 'right' }}
+                        title='Close this add view'
+                        onClick={this.onClickCloseFunc}
+                    >
+                        <span className='codicon codicon-close'></span>
+                    </VSCodeButton>
+                    <VSCodeTextField
+                        key={key++}
+                        autofocus={true}
+                        name='expr'
+                        type='text'
+                        style={{ width: '100%' }}
+                        ref={this.exprRef}
+                        onKeyDown={this.onKeyDownFunc}
+                    >
+                        {bigLabel}
+                    </VSCodeTextField>
+                    <br key={key++}></br>
+                    <VSCodeTextField
+                        key={key++}
+                        name='size'
+                        type='text'
+                        style={{ width: '100%' }}
+                        ref={this.sizeRef}
+                        value='4 * 1024 * 1024'
+                        onKeyDown={this.onKeyDownFunc}
+                    >
+                        Size: Hex/decimal constant or expression
+                    </VSCodeTextField>
+                    <br key={key++}></br>
+                    <div key={key++} style={{ marginTop: '10px' }}>
                         <VSCodeButton
                             key={key++}
                             appearance='primary'

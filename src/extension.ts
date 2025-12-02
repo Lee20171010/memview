@@ -123,7 +123,7 @@ export class MemViewExtension {
             // The following will add a memory view. If no arguments are present then the user will be prompted for an expression
             vscode.commands.registerCommand('mcu-debug.memory-view.addMemoryView', (constOrExprOrMemRef?: string, opts?: MemviewUriOptions) => {
                 if (this.tracker.isActive()) {
-                    MemViewPanelProvider.newMemoryView(constOrExprOrMemRef, opts);
+                    MemViewPanelProvider.newMemoryView(constOrExprOrMemRef, undefined, opts);
                 } else {
                     vscode.window.showErrorMessage('Cannot execute this command as the debug-tracker-vscode extension did not connect properly');
                 }

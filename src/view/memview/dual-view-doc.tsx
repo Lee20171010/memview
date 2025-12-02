@@ -27,7 +27,8 @@ import {
     UnknownDocId,
     EndianType,
     RowFormatType,
-    IModifiableProps
+    IModifiableProps,
+    IAddMemoryInfo
 } from './shared';
 import { hexFmt64 } from './utils';
 

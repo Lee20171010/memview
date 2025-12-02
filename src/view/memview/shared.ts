@@ -13,7 +13,8 @@ export enum CmdType {
     GetStartAddress = 'GetBaseAddress',
     GetMaxBytes = 'GetMaxBytes',
     ButtonClick = 'ButtonClick',
-    SettingsChanged = 'SettingsChanged'
+    SettingsChanged = 'SettingsChanged',
+    AddNewMemoryView = 'AddNewMemoryView'
 }
 
 export interface IMessage {
@@ -93,6 +94,10 @@ export interface IModifiableProps {
     format: RowFormatType;
     column: string;
 }
+export interface IAddMemoryInfo {
+    expr: string;
+    size: string;
+}
 export interface IWebviewDocInfo {
     displayName: string;
     sessionId: string;
@@ -107,6 +112,9 @@ export interface IWebviewDocInfo {
 
 export interface ICmdSettingsChanged extends ICmdBase {
     settings: IModifiableProps;
+}
+export interface ICmdAddMemoryView extends ICmdBase {
+    info: IAddMemoryInfo;
 }
 
 export type ModifiedXferMap = { [addr: string]: number };
@@ -136,7 +144,7 @@ export interface ICmdClientState extends ICmdBase {
     state: { [key: string]: any };
 }
 
-export type CmdButtonName = 'close' | 'new' | 'select' | 'refresh' | 'settings' | 'copy-all-to-clipboard' | 'copy-all-to-file';
+export type CmdButtonName = 'close' | 'select' | 'refresh' | 'settings' | 'copy-all-to-clipboard' | 'copy-all-to-file';
 export interface ICmdButtonClick extends ICmdBase {
     button: CmdButtonName;
 }

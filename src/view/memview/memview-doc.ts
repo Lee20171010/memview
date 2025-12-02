@@ -7,8 +7,8 @@ import { MemViewExtension, MemviewUriOptions } from '../../extension';
 import {
     IWebviewDocXfer, ICmdGetMemory, IMemoryInterfaceCommands, ICmdBase, CmdType,
     IMessage, ICmdSetMemory, ICmdSetByte, IMemviewDocumentOptions, ITrackedDebugSessionXfer,
-    ICmdClientState, ICmdGetStartAddress, ICmdButtonClick, ICmdSettingsChanged, UnknownDocId,
-    ICmdGetMaxBytes
+    ICmdClientState, ICmdGetStartAddress, ICmdButtonClick, ICmdSettingsChanged, ICmdAddMemoryView,
+    UnknownDocId, ICmdGetMaxBytes
 } from './shared';
 import { DebuggerTrackerLocal, ITrackedDebugSession } from './debug-tracker';
 import { DebugProtocol } from '@vscode/debugprotocol';
@@ -610,10 +610,6 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                                 this.updateHtmlForInit();
                                 break;
                             }
-                            case 'new': {
-                                MemViewPanelProvider.newMemoryView();
-                                break;
-                            }
                             case 'select': {
                                 DualViewDoc.setCurrentDoc(body.docId);
                                 this.updateHtmlForInit();
@@ -650,6 +646,11 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                             doc.updateSettings((body as ICmdSettingsChanged).settings);
                             this.updateHtmlForInit();
                         }
+                        break;
+                    }
+                    case CmdType.AddNewMemoryView: {
+                        const info = (body as ICmdAddMemoryView).info;
+                        MemViewPanelProvider.newMemoryView(info.expr, info.size);
                         break;
                     }
                     default: {
@@ -775,9 +776,13 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         });
     }
 
-    public static newMemoryView(expr?: string, opts?: MemviewUriOptions | any) {
+    public static newMemoryView(expr?: string, size?: string, opts?: MemviewUriOptions | any) {
         if (typeof expr !== 'string' || !expr) {
             expr = undefined;
+        }
+
+        if (typeof size !== 'string' || !size) {
+            size = undefined;
         }
 
         if (!expr) {
@@ -788,7 +793,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             }
         }
 
-        if (expr) {
+        if (expr && !size) {
             opts = opts || {};
             opts.expr = expr;
             if (!opts.sessionId && vscode.debug.activeDebugSession) {
@@ -803,6 +808,13 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             MemViewPanelProvider.Provider.handleUri(uri)?.then(undefined, (e: any) => {
                 vscode.window.showErrorMessage(`newMemoryView failed: ${e}`);
             });
+            return;
+        } else if (expr && size) {
+            if (vscode.debug.activeDebugSession) {
+                MemViewPanelProvider.addMemoryView(vscode.debug.activeDebugSession, expr, size);
+            } else {
+                vscode.window.showErrorMessage('There is no active debug session');
+            }
             return;
         }
 
