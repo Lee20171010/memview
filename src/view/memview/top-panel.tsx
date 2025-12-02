@@ -177,6 +177,11 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
         }
     }
 
+    private onClickLoadAllFunc = this.onClickLoadAll.bind(this);
+    private onClickLoadAll(_ev: React.MouseEvent) {
+        vscodePostCommandNoResponse(this.createCmd('load-all'));
+    }
+
     private onClickCopyToFileFunc = this.onClickCopyToFile.bind(this);
     private onClickCopyToFile(_ev: React.MouseEvent) {
         vscodePostCommandNoResponse(this.createCmd('copy-all-to-file'));
@@ -245,6 +250,14 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
                     onClick={this.onClickCopyToFileFunc}
                 >
                     <span className='codicon codicon-file-binary'></span>
+                </VSCodeButton>
+                <VSCodeButton
+                    key={key++}
+                    appearance='icon'
+                    title='Load all size'
+                    onClick={this.onClickLoadAllFunc}
+                >
+                    <span className='codicon codicon-arrow-down'></span>
                 </VSCodeButton>
                 <VSCodeButton
                     key={key++}

@@ -313,6 +313,10 @@ export class DualViewDoc {
         return this.memory.refreshMemoryIfStale();
     }
 
+    public ensureAllPagesLoaded(): Promise<any> {
+        return this.memory.ensureAllPagesLoaded();
+    }
+
     public static debuggerStatusChanged(
         sessionId: string,
         status: DebugSessionStatusSimple,
@@ -747,6 +751,21 @@ class MemPages {
         const offset = addr - this.baseAddress;
         const slot = Math.floor(Number(offset) / (DualViewDoc.currentDoc?.PageSize || 512));
         return slot;
+    }
+
+    public ensureAllPagesLoaded(): Promise<any> {
+        const totalBytes = Number(this.parentDoc.maxBytes);
+        const pageSize = DualViewDoc.currentDoc?.PageSize || 512;
+        const numPages = Math.ceil(totalBytes / pageSize);
+        this.growPages(numPages - 1);
+
+        const promises = [];
+        let addr = this.baseAddress;
+        for (let i = 0; i < numPages; i++) {
+            promises.push(this.getValue(addr));
+            addr += BigInt(pageSize);
+        }
+        return Promise.all(promises);
     }
 
     public refreshMemoryIfStale(): Promise<any> {

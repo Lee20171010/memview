@@ -629,6 +629,16 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                                 doc && this.dumpAllToClipboard(doc);
                                 break;
                             }
+                            case 'load-all': {
+                                if (doc) {
+                                    if (doc.size === '4 * 1024 * 1024') {
+                                        vscode.window.showInformationMessage('Load all is disabled for default size (4 * 1024 * 1024). Please change the size in settings.');
+                                    } else {
+                                        doc.ensureAllPagesLoaded();
+                                    }
+                                }
+                                break;
+                            }
                             case 'copy-all-to-file': {
                                 doc && this.dumpAllToFile(doc);
                                 break;
