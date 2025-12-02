@@ -337,7 +337,9 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                     props.startAddress = addr;
                     props.maxBytesStale = false;
                     props.maxBytes = String(4 * 1024 * 1024);
-                    new DualViewDoc(props);
+                    const doc = new DualViewDoc(props);
+                    doc.sessionStatus = DocDebuggerStatus.Stopped;
+                    doc.isReady = true;
                     MemViewPanelProvider.Provider.showPanel();
                     return Promise.resolve();
                 }).catch((e) => {
@@ -351,7 +353,10 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                     msg += ' You will have to change the current view manually since there is already a view displayed';
                 }
                 vscode.window.showInformationMessage(msg);
-                new DualViewDoc(props);
+                const doc = new DualViewDoc(props);
+                if (existing.sessionInfo && (existing.sessionInfo.status === DebugSessionStatus.Running || existing.sessionInfo.status === DebugSessionStatus.Started)) {
+                    doc.sessionStatus = DocDebuggerStatus.Busy;
+                }
                 MemViewPanelProvider.Provider.showPanel();
                 return Promise.resolve();
             }
@@ -768,7 +773,15 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                     MemViewPanelProvider.Provider.showPanel();
                 }
             } else {
-                new DualViewDoc(props);
+                const doc = new DualViewDoc(props);
+                if (sessonInfo) {
+                    if (sessonInfo.status === DebugSessionStatus.Stopped) {
+                        doc.sessionStatus = DocDebuggerStatus.Stopped;
+                        doc.isReady = true;
+                    } else if (sessonInfo.status === DebugSessionStatus.Running || sessonInfo.status === DebugSessionStatus.Started) {
+                        doc.sessionStatus = DocDebuggerStatus.Busy;
+                    }
+                }
                 MemViewPanelProvider.Provider.showPanel();
             }
         }).catch((e) => {
