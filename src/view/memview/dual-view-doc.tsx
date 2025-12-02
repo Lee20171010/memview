@@ -35,7 +35,8 @@ import { hexFmt64 } from './utils';
 export enum DualViewDocGlobalEventType {
     CurrentDoc = 'current-doc',
     DebuggerStatus = 'debugger-status',
-    BaseAddress = 'base-address'
+    BaseAddress = 'base-address',
+    ScrollToBottom = 'scroll-to-bottom'
 }
 
 export enum DocDebuggerStatus {

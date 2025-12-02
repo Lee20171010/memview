@@ -14,7 +14,8 @@ export enum CmdType {
     GetMaxBytes = 'GetMaxBytes',
     ButtonClick = 'ButtonClick',
     SettingsChanged = 'SettingsChanged',
-    AddNewMemoryView = 'AddNewMemoryView'
+    AddNewMemoryView = 'AddNewMemoryView',
+    ScrollToBottom = 'ScrollToBottom'
 }
 
 export interface IMessage {

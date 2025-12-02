@@ -634,7 +634,14 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                                     if (doc.size === '4 * 1024 * 1024') {
                                         vscode.window.showInformationMessage('Load all is disabled for default size (4 * 1024 * 1024). Please change the size in settings.');
                                     } else {
-                                        doc.ensureAllPagesLoaded();
+                                        doc.ensureAllPagesLoaded().then(() => {
+                                            const msg: ICmdBase = {
+                                                type: CmdType.ScrollToBottom,
+                                                sessionId: doc.sessionId,
+                                                docId: doc.docId
+                                            };
+                                            this.postNotice(msg, {});
+                                        });
                                     }
                                 }
                                 break;

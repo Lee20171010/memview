@@ -11,7 +11,7 @@ import {
     atom,
     RecoilState,
 } from 'recoil';
-import { DualViewDoc } from './dual-view-doc';
+import { DualViewDoc, DualViewDocGlobalEventType, IDualViewDocGlobalEventArg } from './dual-view-doc';
 import { MsgResponse, ICmdBase, IMessage, CmdType } from './shared';
 import { WebviewDebugTracker } from './webview-debug-tracker';
 import { SelContext } from './selection';
@@ -130,6 +130,16 @@ function recieveNoticeFromVSCode(notice: IMessage) {
     switch (notice.command) {
         case CmdType.DebugerStatus: {
             WebviewDebugTracker.updateSession(notice.body);
+            break;
+        }
+        case CmdType.ScrollToBottom: {
+            const arg: IDualViewDocGlobalEventArg = {
+                type: DualViewDocGlobalEventType.ScrollToBottom,
+                docId: notice.body.docId,
+                baseAddress: 0n, // Not used
+                maxBytes: 0n // Not used
+            };
+            DualViewDoc.globalEventEmitter.emit(DualViewDocGlobalEventType.ScrollToBottom, arg);
             break;
         }
         default: {

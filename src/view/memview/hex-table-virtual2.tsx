@@ -5,7 +5,7 @@ import { FixedSizeList as List, ListOnScrollProps } from 'react-window';
 
 // import 'react-virtualized/styles.css';
 import { IHexDataRow, HexDataRow, HexHeaderRow, OnCellChangeFunc } from './hex-elements';
-import { DualViewDoc, IDualViewDocGlobalEventArg } from './dual-view-doc';
+import { DualViewDoc, IDualViewDocGlobalEventArg, DualViewDocGlobalEventType } from './dual-view-doc';
 import { vscodeGetState, vscodeSetState } from './webview-globals';
 import { UnknownDocId } from './shared';
 import { SelContext } from './selection';
@@ -116,6 +116,7 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
         this.bytesPerRow = doc?.bytesPerRow || 16;
         this.maxNumRows = Math.ceil(Number(this.state.maxNumBytes) / this.bytesPerRow);
         DualViewDoc.globalEventEmitter.addListener('any', this.onGlobalEventFunc);
+        DualViewDoc.globalEventEmitter.addListener(DualViewDocGlobalEventType.ScrollToBottom, this.onScrollToBottomFunc);
         SelContext.eventEmitter.addListener('changed', () => {
             this.setState({ selChangedToggle: !this.state.selChangedToggle });
         });
@@ -139,6 +140,7 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
         }
         if (arg.maxBytes && arg.maxBytes !== this.state.maxNumBytes) {
             newState.maxNumBytes = arg.maxBytes ?? (4n * 1024n * 1024n);
+            this.maxNumRows = Math.ceil(Number(newState.maxNumBytes) / this.bytesPerRow);
         }
         if ((arg.baseAddress && arg.baseAddress !== this.state.baseAddress)
             || (arg.maxBytes && arg.maxBytes !== this.state.maxNumBytes)) {
@@ -146,6 +148,37 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
             this.loadInitial(); // We need the items to be empty before calling this, not yet sure how to do that
         }
         this.setState(newState);
+    }
+
+    private onScrollToBottomFunc = this.onScrollToBottom.bind(this);
+    private onScrollToBottom() {
+        // We need to make sure the items are loaded before we scroll
+        const items = this.state.items ? [...this.state.items] : [];
+        const endAddr = this.state.baseAddress + (this.state.maxNumBytes || 1n);
+        let changed = false;
+        for (let ix = items.length; ix < this.maxNumRows; ix++) {
+            const addr = this.state.baseAddress + BigInt(ix * this.bytesPerRow);
+            if (addr >= endAddr) {
+                break;
+            }
+            const tmp: IHexDataRow = {
+                address: addr,
+                onChange: this.props.onChange
+            };
+            items.push(tmp);
+            changed = true;
+        }
+        if (changed) {
+            this.setState({ items: items }, () => {
+                if (this.listElementRef) {
+                    const idx = this.maxNumRows > 0 ? this.maxNumRows - 1 : 0;
+                    this.listElementRef.scrollToItem(idx);
+                }
+            });
+        } else if (this.listElementRef) {
+            const idx = this.maxNumRows > 0 ? this.maxNumRows - 1 : 0;
+            this.listElementRef.scrollToItem(idx);
+        }
     }
 
     private rowHeightDetected = false;
