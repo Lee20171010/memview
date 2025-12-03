@@ -1,17 +1,28 @@
-
 declare function acquireVsCodeApi(): IVsCodeApi;
+
+declare global {
+    interface Window {
+        initialDataFromVSCode: string;
+        viewType: string;
+    }
+}
 
 export function globalsInit() {
     window.addEventListener('message', vscodeReceiveMessage);
     myGlobals.vscode = acquireVsCodeApi();
+    if (myGlobals.vscode) {
+        setVsCodeApi(myGlobals.vscode);
+    }
     myGlobals.selContext = new SelContext();
+    myGlobals.viewType = window.viewType;
 }
 
 import {
     atom,
     RecoilState,
 } from 'recoil';
-import { DualViewDoc, DualViewDocGlobalEventType, IDualViewDocGlobalEventArg } from './dual-view-doc';
+import { setVsCodeApi } from './connection';
+import { DualViewDocGlobalEventType, IDualViewDocGlobalEventArg, DocumentManager } from './dual-view-doc';
 import { MsgResponse, ICmdBase, IMessage, CmdType } from './shared';
 import { WebviewDebugTracker } from './webview-debug-tracker';
 import { SelContext } from './selection';
@@ -25,10 +36,13 @@ export interface IVsCodeApi {
 export interface IMyGlobals {
     vscode?: IVsCodeApi;
     selContext?: SelContext;
+    viewType?: string;
 }
 
 export const myGlobals: IMyGlobals = {
 };
+
+export const documentManager = new DocumentManager();
 
 export const frozenState: RecoilState<boolean> = atom({
     key: 'frozenState', // unique ID (with respect to other atoms/selectors)
@@ -106,7 +120,7 @@ function recieveResponseFromVSCode(response: IMessage) {
             // Some commands don't need any translation. Only deal with
             // those that need it
             case CmdType.GetDocuments: {
-                DualViewDoc.restoreSerializableAll(response.body);
+                documentManager.restoreSerializableAll(response.body);
                 pending.resolve(true);
                 break;
             }
@@ -139,7 +153,7 @@ function recieveNoticeFromVSCode(notice: IMessage) {
                 baseAddress: 0n, // Not used
                 maxBytes: 0n // Not used
             };
-            DualViewDoc.globalEventEmitter.emit(DualViewDocGlobalEventType.ScrollToBottom, arg);
+            documentManager.globalEventEmitter.emit(DualViewDocGlobalEventType.ScrollToBottom, arg);
             break;
         }
         default: {

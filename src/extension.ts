@@ -84,7 +84,7 @@ export class MemViewExtension {
     }
 
     onDeactivate() {
-        MemViewPanelProvider.saveState();
+        MemViewPanelProvider.Providers.forEach(p => p.saveState());
     }
 
     constructor(public context: vscode.ExtensionContext) {
@@ -166,14 +166,14 @@ export class MemViewExtension {
                             path: '/' + encodeURIComponent(memRef),
                             query: querystring.stringify(options as any)
                         });
-                        const existing = MemViewPanelProvider.Provider.findByUri(newUri);
+                        const existing = MemViewPanelProvider.Providers[0].findByUri(newUri);
                         if (!existing.doc) {
                             if (trackAllowedSilent) {
                                 try {
-                                    await MemViewPanelProvider.Provider.handleUri(newUri);
+                                    await MemViewPanelProvider.Providers[0].handleUri(newUri);
                                     if (closeHexEditorAfterDuplicating) {
                                         try {
-                                            const newItem = MemViewPanelProvider.Provider.findByUri(newUri);
+                                            const newItem = MemViewPanelProvider.Providers[0].findByUri(newUri);
                                             if (newItem.doc) {
                                                 vscode.commands.executeCommand('workbench.action.closeActiveEditor');
                                             }

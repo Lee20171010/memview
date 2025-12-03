@@ -94,6 +94,36 @@
                     "type": "webview",
                     "name": "MEMORY",
                     "when": "memory-view:showMemoryPanel && memory-view:memoryPanelLocation == panel"
+                },
+                {
+                    "id": "memory-view.memoryView1",
+                    "type": "webview",
+                    "name": "MEMORY 1",
+                    "when": "memory-view:showPanel1 && memory-view:memoryPanelLocation == panel"
+                },
+                {
+                    "id": "memory-view.memoryView2",
+                    "type": "webview",
+                    "name": "MEMORY 2",
+                    "when": "memory-view:showPanel2 && memory-view:memoryPanelLocation == panel"
+                },
+                {
+                    "id": "memory-view.memoryView3",
+                    "type": "webview",
+                    "name": "MEMORY 3",
+                    "when": "memory-view:showPanel3 && memory-view:memoryPanelLocation == panel"
+                },
+                {
+                    "id": "memory-view.memoryView4",
+                    "type": "webview",
+                    "name": "MEMORY 4",
+                    "when": "memory-view:showPanel4 && memory-view:memoryPanelLocation == panel"
+                },
+                {
+                    "id": "memory-view.memoryView5",
+                    "type": "webview",
+                    "name": "MEMORY 5",
+                    "when": "memory-view:showPanel5 && memory-view:memoryPanelLocation == panel"
                 }
             ]
         },
