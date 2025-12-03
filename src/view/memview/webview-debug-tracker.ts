@@ -1,4 +1,5 @@
 import { DualViewDoc } from './dual-view-doc';
+import { documentManager } from './webview-globals';
 import { ITrackedDebugSessionXfer } from './shared';
 
 export class WebviewDebugTracker {
@@ -11,13 +12,13 @@ export class WebviewDebugTracker {
         for (const session of sessions) {
             WebviewDebugTracker.sessionsById[session.sessionId] = session;
             WebviewDebugTracker.sessionsByName[session.sessionName] = session;
-            DualViewDoc.debuggerStatusChanged(session.sessionId, session.status, session.sessionName, session.wsFolder);
+            documentManager.debuggerStatusChanged(session.sessionId, session.status, session.sessionName, session.wsFolder);
         }
     }
 
     static updateSession(arg: ITrackedDebugSessionXfer) {
         const id = arg.sessionId;
-        DualViewDoc.debuggerStatusChanged(id, arg.status, arg.sessionName, arg.wsFolder);
+        documentManager.debuggerStatusChanged(id, arg.status, arg.sessionName, arg.wsFolder);
         if (arg.status === 'terminated') {
             delete WebviewDebugTracker.sessionsById[id];
             delete WebviewDebugTracker.sessionsByName[arg.sessionName];

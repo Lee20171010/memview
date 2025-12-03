@@ -1,4 +1,5 @@
 import { DocDebuggerStatus, DualViewDoc, DummyByte } from './dual-view-doc';
+import { documentManager } from './webview-globals';
 import events from 'events';
 import { bigIntMax, bigIntMin, hexFmt64 } from './utils';
 
@@ -30,7 +31,7 @@ export class SelContext {
 
     public static isSelectionInRow(addr: bigint): boolean {
         const range = SelContext.current?.range;
-        const doc = DualViewDoc.currentDoc;
+        const doc = documentManager.currentDoc;
         if (range && doc) {
             const rSize = doc.format === '1-byte' ? 16n : 32n;
             addr = addr / rSize;
@@ -41,7 +42,7 @@ export class SelContext {
 
     public setCurrent(address: bigint, elt: Element) {
         const sel = document.getSelection();
-        const doc = DualViewDoc.currentDoc;
+        const doc = documentManager.currentDoc;
         if (sel && doc) {
             sel.removeAllRanges();
             const range = document.createRange();
@@ -76,14 +77,14 @@ export class SelContext {
 
     public async copyToClipboard() {
         const range = this.range;
-        const doc = DualViewDoc.currentDoc;
+        const doc = documentManager.currentDoc;
         if (range && doc) {
             if (range.start > doc.maxAddress) {
                 return;
             }
             const refreshPage = async (addr: bigint) => {
                 try {
-                    await DualViewDoc.getCurrentDocByte(addr); // This will refresh if debugger is stopped
+                    await documentManager.currentDoc?.getByte(addr); // This will refresh if debugger is stopped
                 } catch {}
             };
             const getByteOrder = (isBigEndian: boolean, bytePerWord: number): number[] => {
@@ -100,7 +101,7 @@ export class SelContext {
             let addr = doc.baseAddress + (((range.start - doc.baseAddress) / BigInt(doc.bytesPerRow)) * BigInt(doc.bytesPerRow));
             await refreshPage(addr);
             while (!done && (addr + BigInt(bytePerWord) - 1n) <= range.end && (addr + BigInt(bytePerWord) - 1n) < doc.maxAddress) {
-                const row = DualViewDoc.getRowUnsafe(addr);
+                const row = documentManager.currentDoc?.getRow(addr) || [];
                 let ix = 0;
                 while (addr < range.start) {
                     addr++;

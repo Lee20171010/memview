@@ -132,6 +132,10 @@ body {
     width: 18ch;
 }
 
+.hex-cell-address-32 {
+    width: 10ch;
+}
+
 .header-cell-address {
     color: var(--vscode-symbolIcon-classForeground);
     font-weight: bold;
