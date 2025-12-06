@@ -82,7 +82,8 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
         const intVal = parseInt(val, 16);
         if (this.props.cellInfo.cur !== intVal) {
             this.props.cellInfo.cur = intVal;
-            DualViewDoc.setCurrentDocByte(this.props.address, intVal);
+            // DualViewDoc.setCurrentDocByte(this.props.address, intVal);
+            DualViewDoc.setCurrentDocExpr(this.props.address, '0x' + val, this.props.bytesPerCell);
             if (this.props.onChange) {
                 this.props.onChange(this.props.address, intVal);
             }
@@ -115,7 +116,7 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
     }
 
     editable = () => {
-        return !this.state.frozen && !DualViewDoc.currentDoc?.isReadonly;
+        return !this.state.frozen; // && !DualViewDoc.currentDoc?.isReadonly;
     };
 
     static dbgPrints = false;
@@ -159,11 +160,9 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
         }
         if (v) {
             HexCellValue.newGoodValue = v;
-            if (HexCellValue.lastOrigValue !== v) {
-                setTimeout(() => {
-                    this.onValueChanged(v);
-                }, 1);
-            }
+            setTimeout(() => {
+                this.onValueChanged(v);
+            }, 1);
         }
     }
     private onKeyDownFunc = this.onKeyDown.bind(this);
@@ -181,7 +180,7 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
             return;
         }
         // console.log('onInput: new value = ' + ev.currentTarget.innerText);
-        if (ev.currentTarget.innerText.length > 2) {
+       if (ev.currentTarget.innerText.length > this.props.bytesPerCell * 2) {
             const el = ev.currentTarget;
             const val = HexCellValue.lastGoodValue;
             setTimeout(() => {

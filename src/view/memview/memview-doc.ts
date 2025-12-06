@@ -6,7 +6,7 @@ import { DocDebuggerStatus, DualViewDoc } from './dual-view-doc';
 import { MemViewExtension, MemviewUriOptions } from '../../extension';
 import {
     IWebviewDocXfer, ICmdGetMemory, IMemoryInterfaceCommands, ICmdBase, CmdType,
-    IMessage, ICmdSetMemory, ICmdSetByte, IMemviewDocumentOptions, ITrackedDebugSessionXfer,
+    IMessage, ICmdSetMemory, ICmdSetByte, ICmdSetExpr, IMemviewDocumentOptions, ITrackedDebugSessionXfer,
     ICmdClientState, ICmdGetStartAddress, ICmdButtonClick, ICmdSettingsChanged, ICmdAddMemoryView,
     UnknownDocId, ICmdGetMaxBytes
 } from './shared';
@@ -591,6 +591,17 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                         this.postResponse(body, docs);
                         break;
                     }
+                    case CmdType.SetExpr: {
+                        const doc = DualViewDoc.getDocumentById(body.docId);
+                        if (doc) {
+                            const memCmd = (body as ICmdSetExpr);
+                            doc.setExprPage(memCmd.expr, memCmd.val, memCmd.count).then((value) => {
+                                DualViewDoc.markAllDocsStale();
+                                this.updateHtmlForInit();
+                            });
+                        }
+                        break;
+                    }
                     case CmdType.SetByte: {
                         const doc = DualViewDoc.getDocumentById(body.docId);
                         if (doc) {
@@ -972,6 +983,9 @@ class mockDebugger implements IMemoryInterfaceCommands {
             end > this.testBuffer.length ? this.testBuffer.length : end);
         return Promise.resolve(bytes);
     }
+    setExpr(_arg: ICmdSetExpr): Promise<string> {
+        return Promise.resolve('0');
+    }
     setMemory(_arg: ICmdSetMemory): Promise<boolean> {
         return Promise.resolve(true);
     }
@@ -1009,6 +1023,37 @@ class DebuggerIF implements IMemoryInterfaceCommands {
             }), ((e: any) => {
                 debugConsoleMessage(e, arg);
                 return resolve(new Uint8Array(0));
+            });
+        });
+    }
+    setExpr(_arg: ICmdSetExpr): Promise<string> {
+        let type = 'unsigned char';
+        if (_arg.count === 2) {
+            type = 'unsigned short';
+        } else if (_arg.count === 4) {
+            type = 'unsigned int';
+        } else if (_arg.count === 8) {
+            type = 'unsigned long long';
+        }
+
+        const memArg: DebugProtocol.SetExpressionArguments = {
+            expression: '*(' + type + '*)(' + _arg.expr + ')',
+            value: _arg.val
+        };
+        return new Promise<string>((resolve) => {
+            const session = DebuggerTrackerLocal.getSessionById(_arg.sessionId);
+            if (!session || (session.status !== DebugSessionStatus.Stopped)) {
+                return resolve('0');
+            }
+            if (session.lastFrameId !== undefined) {
+                memArg.frameId = session.lastFrameId;
+            }
+            session.session.customRequest('setExpression', memArg).then((result) => {
+                session.session.customRequest('sendInvalidate', { areas: ['variables'], stackFrameId: session.lastFrameId });
+                return resolve(result.value);
+            }), ((e: any) => {
+                console.error('Error while setExpression', e);
+                return resolve('0');
             });
         });
     }

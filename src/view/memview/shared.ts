@@ -6,6 +6,7 @@ export enum CmdType {
     GetDocuments = 'GetDocuments',
     GetMemory = 'GetMemory',
     SetByte = 'GetMemory',
+    SetExpr = 'SetExpr',
     DebugerStatus = 'DebuggerStatus',
     GetDebuggerSessions = 'DebuggerSessions',
     NewDocument = 'NewDocument',
@@ -74,6 +75,12 @@ export interface ICmdSetMemory extends ICmdGetMemory {
 export interface ICmdSetByte extends ICmdBase {
     addr: string;
     value: number; // Positive number is new value, neg is deletion
+}
+
+export interface ICmdSetExpr extends ICmdBase {
+    expr: string;
+    val: string;
+    count: number;
 }
 
 export interface IMemValue {
@@ -155,6 +162,7 @@ export interface IMemoryInterfaceCommands {
     getMaxBytes(arg: ICmdGetMaxBytes): Promise<string>;
     getMemory(arg: ICmdGetMemory): Promise<Uint8Array>;
     setMemory(arg: ICmdSetMemory): Promise<boolean>;
+    setExpr(arg: ICmdSetExpr): Promise<string>;
 }
 
 export type DebugSessionStatusSimple = 'initializing' | 'started' | 'running' | 'stopped' | 'terminated' | 'unknown';

@@ -18,6 +18,7 @@ import {
     ICmdGetMemory,
     CmdType,
     ICmdSetByte,
+    ICmdSetExpr,
     IWebviewDocInfo,
     ModifiedXferMap,
     DebugSessionStatusSimple,
@@ -306,6 +307,17 @@ export class DualViewDoc {
         return Promise.resolve(ary);
     }
 
+    async setExprPage(expr: string, value: string, nBytes: number): Promise<string> {
+        let ary = undefined;
+        try {
+            ary = await this.setExprToSource(expr, value, nBytes);
+        } catch (e) {}
+        if (!ary) {
+            ary = '0';
+        }
+        return Promise.resolve(ary);
+    }
+
     public getMemoryRaw(): MemPages {
         return this.memory;
     }
@@ -477,6 +489,29 @@ export class DualViewDoc {
         }
     }
 
+    setExprToSource(expr: string, value: string, nBytes: number): Promise<string> {
+        const msg: ICmdSetExpr = {
+            type: CmdType.SetExpr,
+            sessionId: this.sessionId,
+            docId: this.docId,
+            seq: 0,
+            expr: expr,
+            val: value,
+            count: nBytes
+        };
+        // eslint-disable-next-line no-async-promise-executor
+        const promise = new Promise<string>(async (resolve) => {
+            try {
+                const ret = await DualViewDoc.memoryIF.setExpr(msg);
+                resolve(ret);
+            } catch (e) {
+                console.error('Error setting expression', e);
+                resolve('0');
+            }
+        });
+        return promise;
+    }
+
     // Only for webviews. Will fail on VSCode side -- use setByteLocal() instead
     static setCurrentDocByte(addr: bigint, val: number) {
         const doc = DualViewDoc.currentDoc;
@@ -486,6 +521,21 @@ export class DualViewDoc {
                 addr: addr.toString(),
                 value: old === val ? -1 : val,
                 type: CmdType.SetByte,
+                sessionId: doc.sessionId,
+                docId: doc.docId
+            };
+            vscodePostCommandNoResponse(cmd);
+        }
+    }
+
+    static setCurrentDocExpr(addr: bigint, val: string, nBytes: number) {
+        const doc = DualViewDoc.currentDoc;
+        if (doc) {
+            const cmd: ICmdSetExpr = {
+                expr: addr.toString(),
+                val: val,
+                count: nBytes,
+                type: CmdType.SetExpr,
                 sessionId: doc.sessionId,
                 docId: doc.docId
             };

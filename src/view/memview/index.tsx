@@ -15,7 +15,8 @@ import {
     CmdType,
     ICmdBase,
     ICmdSetMemory,
-    ICmdGetMaxBytes
+    ICmdGetMaxBytes,
+    ICmdSetExpr
 } from './shared';
 
 class MemoryInterfaceFromVSCode implements IMemoryInterfaceCommands {
@@ -29,6 +30,9 @@ class MemoryInterfaceFromVSCode implements IMemoryInterfaceCommands {
         return vscodePostCommand(arg);
     }
     setMemory(arg: ICmdSetMemory): Promise<boolean> {
+        return vscodePostCommand(arg);
+    }
+    setExpr(arg: ICmdSetExpr): Promise<string> {
         return vscodePostCommand(arg);
     }
 }
