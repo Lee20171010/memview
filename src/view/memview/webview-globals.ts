@@ -115,6 +115,13 @@ function recieveResponseFromVSCode(response: IMessage) {
                 pending.resolve(true);
                 break;
             }
+            case CmdType.GetFavoriteInfo: {
+                if (DualViewDoc) {
+                    DualViewDoc.favoriteInfoAry = response.body;
+                }
+                pending.resolve(true);
+                break;
+            }
             default: {
                 pending.resolve(response.body);
                 break;

@@ -8,13 +8,14 @@
  * the vscode post functions that are only valid in the Webview
  */
 
-import { myGlobals, vscodePostCommandNoResponse } from './webview-globals';
+import { myGlobals, vscodePostCommand, vscodePostCommandNoResponse } from './webview-globals';
 import { Buffer } from 'buffer';
 import events from 'events';
 import {
     IMemValue,
     IMemoryInterfaceCommands,
     IWebviewDocXfer,
+    ICmdBase,
     ICmdGetMemory,
     CmdType,
     ICmdSetByte,
@@ -29,7 +30,9 @@ import {
     EndianType,
     RowFormatType,
     IModifiableProps,
-    IAddMemoryInfo
+    IAddMemoryInfo,
+    IFavoriteInfo,
+    ICmdOpenFavorite
 } from './shared';
 import { hexFmt64 } from './utils';
 
@@ -70,6 +73,7 @@ export class DualViewDoc {
         DualViewDoc.memoryIF = arg;
         DualViewDoc.globalEventEmitter.setMaxListeners(1000);
     }
+    public static favoriteInfoAry: IFavoriteInfo[];
 
     public baseAddress = 0n;
     private modifiedMap: Map<bigint, number> = new Map<bigint, number>();
@@ -541,6 +545,64 @@ export class DualViewDoc {
             };
             vscodePostCommandNoResponse(cmd);
         }
+    }
+
+    static getFavoriteInfo(name: string): Promise<any> {
+        const cmd: ICmdOpenFavorite = {
+            name: name,
+            type: CmdType.GetFavoriteInfo,
+            sessionId: UnknownDocId,
+            docId: UnknownDocId,
+        };
+        return vscodePostCommand(cmd);
+    }
+
+    static openFavorite(name: string): Promise<any> {
+        const cmd: ICmdOpenFavorite = {
+            name: name,
+            type: CmdType.OpenFavorite,
+            sessionId: UnknownDocId,
+            docId: UnknownDocId,
+        };
+        return vscodePostCommand(cmd);
+    }
+
+    static addFavorite(info?: IAddMemoryInfo): Promise<any> {
+        const cmd: any = {
+            type: CmdType.AddFavorite,
+            sessionId: UnknownDocId,
+            docId: UnknownDocId,
+            info: info
+        };
+        return vscodePostCommand(cmd);
+    }
+
+    static deleteFavorite(name: string): Promise<any> {
+        const cmd: ICmdOpenFavorite = {
+            name: name,
+            type: CmdType.DeleteFavorite,
+            sessionId: UnknownDocId,
+            docId: UnknownDocId,
+        };
+        return vscodePostCommand(cmd);
+    }
+
+    static importFavorites(): Promise<any> {
+        const cmd: ICmdBase = {
+            type: CmdType.ImportFavorites,
+            sessionId: UnknownDocId,
+            docId: UnknownDocId,
+        };
+        return vscodePostCommand(cmd);
+    }
+
+    static exportFavorites(): Promise<any> {
+        const cmd: ICmdBase = {
+            type: CmdType.ExportFavorites,
+            sessionId: UnknownDocId,
+            docId: UnknownDocId,
+        };
+        return vscodePostCommand(cmd);
     }
 
     setByteLocal(addr: bigint, val: number): number {
