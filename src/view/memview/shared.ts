@@ -16,7 +16,13 @@ export enum CmdType {
     ButtonClick = 'ButtonClick',
     SettingsChanged = 'SettingsChanged',
     AddNewMemoryView = 'AddNewMemoryView',
-    ScrollToBottom = 'ScrollToBottom'
+    ScrollToBottom = 'ScrollToBottom',
+    GetFavoriteInfo = 'GetFavoriteInfo',
+    OpenFavorite = 'OpenFavorite',
+    AddFavorite = 'AddFavorite',
+    DeleteFavorite = 'DeleteFavorite',
+    ImportFavorites = 'ImportFavorites',
+    ExportFavorites = 'ExportFavorites'
 }
 
 export interface IMessage {
@@ -83,6 +89,13 @@ export interface ICmdSetExpr extends ICmdBase {
     count: number;
 }
 
+export interface ICmdOpenFavorite extends ICmdBase {
+    name: string;
+}
+
+export interface IFavoriteInfo {
+    name: string;
+}
 export interface IMemValue {
     changed?: boolean;      // Changed on reload (different from edited)
     cur: number;
@@ -105,6 +118,7 @@ export interface IModifiableProps {
 export interface IAddMemoryInfo {
     expr: string;
     size: string;
+    name?: string;
 }
 export interface IWebviewDocInfo {
     displayName: string;

@@ -8,12 +8,13 @@ import {
     IWebviewDocXfer, ICmdGetMemory, IMemoryInterfaceCommands, ICmdBase, CmdType,
     IMessage, ICmdSetMemory, ICmdSetByte, ICmdSetExpr, IMemviewDocumentOptions, ITrackedDebugSessionXfer,
     ICmdClientState, ICmdGetStartAddress, ICmdButtonClick, ICmdSettingsChanged, ICmdAddMemoryView,
-    UnknownDocId, ICmdGetMaxBytes
+    UnknownDocId, ICmdGetMaxBytes, IFavoriteInfo, ICmdOpenFavorite
 } from './shared';
 import { DebuggerTrackerLocal, ITrackedDebugSession } from './debug-tracker';
 import { DebugProtocol } from '@vscode/debugprotocol';
 import { DebugSessionStatus } from 'debug-tracker-vscode';
 import { hexFmt64 } from './utils';
+import { FavoritesManager } from './favorites-manager';
 
 const KNOWN_SCHMES = {
     FILE: 'file',                                            // Only for testing
@@ -221,10 +222,14 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
     private static readonly stateKeyName = 'documents';
     public static Provider: MemViewPanelProvider;
     private webviewView: vscode.WebviewView | undefined;
+    public static favoritesManager: FavoritesManager;
 
     public static register(context: vscode.ExtensionContext) {
         MemViewPanelProvider.context = context;
         MemViewPanelProvider.Provider = new MemViewPanelProvider(context);
+        MemViewPanelProvider.favoritesManager = new FavoritesManager(context);
+        MemViewPanelProvider.favoritesManager.init();
+        
         context.subscriptions.push(
             vscode.window.registerWebviewViewProvider(
                 MemViewPanelProvider.viewType, MemViewPanelProvider.Provider, {
@@ -686,6 +691,69 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                         MemViewPanelProvider.newMemoryView(info.expr, info.size);
                         break;
                     }
+                    case CmdType.GetFavoriteInfo: {
+                        const memCmd = (body as ICmdOpenFavorite);
+                        const favorites = MemViewPanelProvider.favoritesManager.getFavorites(memCmd.name);
+                        this.postResponse(body, favorites);
+                        break;
+                    }
+                    case CmdType.OpenFavorite: {
+                        const memCmd = (body as ICmdOpenFavorite);
+                        const info = MemViewPanelProvider.favoritesManager.getFavorite(memCmd.name);
+                        if (info && vscode.debug.activeDebugSession) {
+                            MemViewPanelProvider.addMemoryView(vscode.debug.activeDebugSession, info.expr, info.size, memCmd.name);
+                        } else {
+                            vscode.window.showWarningMessage(`Failed to open favorite '${memCmd.name}'`);
+                        }
+                        break;
+                    }
+                    case CmdType.AddFavorite: {
+                        const info = (body as any).info;
+                        if (info) {
+                             vscode.window.showInputBox({
+                                prompt: 'Enter name for favorite',
+                                value: info.name || ''
+                             }).then(name => {
+                                 if (name) {
+                                     MemViewPanelProvider.favoritesManager.addFavorite(name, { expr: info.expr, size: info.size });
+                                 }
+                             });
+                        } else {
+                            const nameExprOptions: vscode.InputBoxOptions = { title: 'Favorite memory name', prompt: 'Enter a name' };
+                            const addrExprOptions: vscode.InputBoxOptions = { title: 'Favorite memory address', prompt: 'Enter address', placeHolder: '0x' };
+                            const sizeExprOptions: vscode.InputBoxOptions = { title: 'Favorite memory size', prompt: 'Enter size', placeHolder: '4 * 1024 * 1024' };
+                            
+                            vscode.window.showInputBox(nameExprOptions).then((name) => {
+                                if (!name) return;
+                                vscode.window.showInputBox(addrExprOptions).then((expr) => {
+                                    if (!expr) return;
+                                    vscode.window.showInputBox(sizeExprOptions).then((size) => {
+                                        if (!size) return;
+                                        MemViewPanelProvider.favoritesManager.addFavorite(name, { expr, size });
+                                    });
+                                });
+                            });
+                        }
+                        break;
+                    }
+                    case CmdType.DeleteFavorite: {
+                        const memCmd = (body as ICmdOpenFavorite);
+                        MemViewPanelProvider.favoritesManager.deleteFavorite(memCmd.name);
+                        this.postResponse(body, true);
+                        break;
+                    }
+                    case CmdType.ImportFavorites: {
+                        MemViewPanelProvider.favoritesManager.importFavorites().then(() => {
+                            this.postResponse(body, true);
+                        });
+                        break;
+                    }
+                    case CmdType.ExportFavorites: {
+                        MemViewPanelProvider.favoritesManager.exportFavorites().then(() => {
+                            this.postResponse(body, true);
+                        });
+                        break;
+                    }
                     default: {
                         console.error('handleMessage: Unknown command', body);
                         break;
@@ -764,7 +832,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         }
     }
 
-    static addMemoryView(session: vscode.DebugSession, addrExpr: string, sizeExpr: string) {
+    static addMemoryView(session: vscode.DebugSession, addrExpr: string, sizeExpr: string, displayName?: string) {
         sizeExpr = sizeExpr.trim();
         addrExpr = addrExpr.trim();
         let size: string;
@@ -778,7 +846,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                 docId: uuid(),
                 sessionId: session.id,
                 sessionName: session.name,
-                displayName: addrExpr,
+                displayName: displayName || addrExpr,
                 expr: addrExpr,
                 endian: 'little',
                 format: '4-byte',

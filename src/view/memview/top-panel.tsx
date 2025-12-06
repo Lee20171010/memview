@@ -18,7 +18,8 @@ import {
     IModifiableProps,
     IAddMemoryInfo,
     RowFormatType,
-    UnknownDocId
+    UnknownDocId,
+    IFavoriteInfo
 } from './shared';
 import { SelContext } from './selection';
 
@@ -186,6 +187,10 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
     private onClickCopyToFile(_ev: React.MouseEvent) {
         vscodePostCommandNoResponse(this.createCmd('copy-all-to-file'));
     }
+    private onClickFavoriteFunc = this.onClickFavorite.bind(this);
+    private onClickFavorite(ev: React.MouseEvent) {
+        FavoritePopupView.open(ev);
+    }
 
     render() {
         // console.log('In MemViewToolbar.render');
@@ -268,6 +273,14 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
                 >
                     <span className='codicon codicon-save'></span>
                 </VSCodeButton>
+                <VSCodeButton
+                    key={key++}
+                    appearance='icon'
+                    title='Favorite memory views'
+                    onClick={this.onClickFavoriteFunc}
+                >
+                    <span className='codicon codicon-heart'></span>
+                </VSCodeButton>
                 <VSCodeButton key={key++} appearance='icon' onClick={this.onClickRefreshFunc}>
                     <span
                         className='codicon codicon-refresh'
@@ -291,6 +304,248 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
                 <VSCodeDivider key={key++} role='presentation'></VSCodeDivider>
                 <ViewSettings {...editProps}></ViewSettings>
                 <AddPopupView {...addProps}></AddPopupView>
+                <FavoritePopupView></FavoritePopupView>
+            </div>
+        );
+    }
+}
+
+interface IFavoritePopupViewState {
+    isOpen: boolean;
+    clientX: number;
+    clientY: number;
+    favoriteInfoAry: IFavoriteInfo[];
+}
+
+export class FavoritePopupView extends React.Component<{}, IFavoritePopupViewState> {
+    static GlobalPtr: FavoritePopupView;
+
+    constructor(props: {}) {
+        super(props);
+        this.state = {
+            isOpen: false,
+            clientX: 0,
+            clientY: 0,
+            favoriteInfoAry: []
+        };
+        FavoritePopupView.GlobalPtr = this;
+    }
+
+    static open(event: any) {
+        event.preventDefault();
+        const button = event.currentTarget;
+        const rect = button.getBoundingClientRect();
+        
+        this.GlobalPtr.setState({
+            isOpen: true,
+            clientX: rect.left,
+            clientY: rect.bottom
+        });
+        this.GlobalPtr.refreshFavorites();
+    }
+
+    private refreshFavorites() {
+        DualViewDoc.getFavoriteInfo('')
+        .catch((err) => {
+            console.error('Failed to get favorite info', err);
+            const failed: IFavoriteInfo[] = [];
+            failed.push({ name: 'Load Failed' });
+            this.setState({ favoriteInfoAry: failed });
+        })
+        .finally(() => {
+            if (DualViewDoc.currentDoc) {
+                this.setState({ favoriteInfoAry: DualViewDoc.favoriteInfoAry });
+            }
+        });
+    }
+
+    private onClickCloseFunc = this.onClickClose.bind(this);
+    private onClickClose(event: any) {
+        event && event.preventDefault();
+        event && event.stopPropagation();
+        this.setState({
+            isOpen: false
+        });
+    }
+
+    private onClickImportFunc = this.onClickImport.bind(this);
+    private onClickImport(e: any) {
+        e.stopPropagation();
+        DualViewDoc.importFavorites();
+        this.setState({ isOpen: false });
+    }
+
+    private onClickExportFunc = this.onClickExport.bind(this);
+    private onClickExport(e: any) {
+        e.stopPropagation();
+        DualViewDoc.exportFavorites();
+        this.setState({ isOpen: false });
+    }
+
+    private onClickAddFavoriteFunc = this.onClickAddFavorite.bind(this);
+    private onClickAddFavorite(e: any) {
+        e.stopPropagation();
+        DualViewDoc.addFavorite();
+        this.setState({ isOpen: false });
+    }
+
+    private onKeyDownSearchFunc = this.onKeyDownSearch.bind(this);
+    private onKeyDownSearch(e: any) {
+        e.stopPropagation();
+
+        if (e.key === 'Enter') {
+            DualViewDoc.getFavoriteInfo(e.target.value)
+            .catch((err) => {
+                console.error('Failed to get favorite info', err);
+                const failed: IFavoriteInfo[] = [];
+                failed.push({ name: 'Load Failed' });
+                this.setState({ favoriteInfoAry: failed });
+            })
+            .finally(() => {
+                if (DualViewDoc.currentDoc) {
+                    this.setState({ favoriteInfoAry: DualViewDoc.favoriteInfoAry });
+                }
+            });
+        }
+    }
+
+    private onClickSearchFavoriteFunc = this.onClickSearchFavorite.bind(this);
+    private onClickSearchFavorite(e: any) {
+        e.stopPropagation();
+    }
+
+    private onSearchInputFunc = this.onSearchInput.bind(this);
+    private onSearchInput(e: any) {
+        const val = e.target.value;
+        DualViewDoc.getFavoriteInfo(val).then((arg: any) => {
+             if (DualViewDoc.currentDoc) {
+                this.setState({ favoriteInfoAry: DualViewDoc.favoriteInfoAry });
+            }
+        });
+    }
+
+    private onClickFavoriteItemFunc = this.onClickFavoriteItem.bind(this);
+    private onClickFavoriteItem(e: any) {
+        e.stopPropagation();
+        const name = e.target.value || e.currentTarget.value || e.target.textContent;
+        if (name) {
+            DualViewDoc.openFavorite(name);
+            this.setState({ isOpen: false });
+        }
+    }
+
+    private onClickDeleteFavoriteItemFunc = this.onClickDeleteFavoriteItem.bind(this);
+    private onClickDeleteFavoriteItem(e: any) {
+        e.stopPropagation();
+        const name = e.currentTarget.value; 
+        if (name) {
+            DualViewDoc.deleteFavorite(name).then(() => {
+                this.refreshFavorites();
+            });
+        }
+    }
+
+    render() {
+        let key = 0;
+        return (
+            <div key={key++} style={{ display: this.state.isOpen ? '' : 'none' }}>
+                <div
+                    key={key++}
+                    className='popup'
+                    style={{
+                        top: this.state.clientY,
+                        left: this.state.clientX,
+                        marginTop: '0px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        fontSize: 'small',
+                        textAlign: 'left',
+                        height: 'auto',
+                        minWidth: '200px',
+                        maxWidth: '400px',
+                        width: 'auto',
+                        padding: '5px',
+                        gap: '5px',
+                        backgroundColor: 'var(--vscode-editor-background)',
+                        border: '1px solid var(--vscode-widget-border)',
+                        zIndex: 1001,
+                        position: 'fixed'
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0px' }}>
+                        <div style={{ display: 'flex', gap: '2px' }}>
+                            <VSCodeButton key={key++} appearance='icon' title='Import Favorites' onClick={this.onClickImportFunc}>
+                                <span className='codicon codicon-cloud-upload'></span>
+                            </VSCodeButton>
+                            <VSCodeButton key={key++} appearance='icon' title='Export Favorites' onClick={this.onClickExportFunc}>
+                                <span className='codicon codicon-cloud-download'></span>
+                            </VSCodeButton>
+                        </div>
+                        <div style={{ display: 'flex', gap: '2px' }}>
+                            <VSCodeButton
+                                key={key++}
+                                appearance='icon'
+                                title='Add Favorite'
+                                onClick={this.onClickAddFavoriteFunc}
+                            >
+                                <span className='codicon codicon-add'></span>
+                            </VSCodeButton>
+                            <VSCodeButton
+                                key={key++}
+                                appearance='icon'
+                                title='Close'
+                                onClick={this.onClickCloseFunc}
+                            >
+                                <span className='codicon codicon-close'></span>
+                            </VSCodeButton>
+                        </div>
+                    </div>
+
+                    <VSCodeTextField
+                        key={key++}
+                        placeholder='Search Favorites'
+                        style={{ width: '100%' }}
+                        onKeyDown={this.onKeyDownSearchFunc}
+                        onClick={this.onClickSearchFavoriteFunc}
+                        onInput={this.onSearchInputFunc}
+                    >
+                    </VSCodeTextField>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '5px', maxHeight: '150px', overflowY: 'auto', overflowX: 'hidden' }}>
+                    {this.state.favoriteInfoAry.map((favoriteInfo) => {
+                        return (
+                            <div key={key++} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ flexGrow: 1, overflowX: 'auto', whiteSpace: 'nowrap', marginRight: '5px', minWidth: 0 }}>
+                                    <VSCodeOption
+                                        key={key++}
+                                        style={{
+                                            display: 'block',
+                                            cursor: 'pointer',
+                                            minWidth: 'max-content'
+                                        }}
+                                        value={favoriteInfo.name}
+                                        onClick={this.onClickFavoriteItemFunc}
+                                    >
+                                        {favoriteInfo.name}
+                                    </VSCodeOption>
+                                </div>
+                                <VSCodeButton
+                                    key={key++}
+                                    appearance='icon'
+                                    title='Delete this Favorite'
+                                    value={favoriteInfo.name}
+                                    onClick={this.onClickDeleteFavoriteItemFunc}
+                                    style={{ flexShrink: 0 }}
+                                >
+                                    <span className='codicon codicon-trash'></span>
+                                </VSCodeButton>
+                            </div>
+                        );
+                    })}
+                    </div>
+                </div>
+                <div className='popup-background' onClick={this.onClickCloseFunc}></div>
             </div>
         );
     }
@@ -433,6 +688,20 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                         onClick={this.onClickCloseFunc}
                     >
                         <span className='codicon codicon-close'></span>
+                    </VSCodeButton>
+                    <VSCodeButton
+                        key={key++}
+                        appearance='icon'
+                        style={{ float: 'right' }}
+                        title='Save as Favorite'
+                        onClick={() => {
+                            const expr = this.exprRef.current.value.trim();
+                            const size = this.sizeRef.current.value.trim();
+                            const name = this.displayNameRef.current.value.trim();
+                            DualViewDoc.addFavorite({ expr, size, name });
+                        }}
+                    >
+                        <span className='codicon codicon-heart'></span>
                     </VSCodeButton>
                     <VSCodeTextField
                         key={key++}
