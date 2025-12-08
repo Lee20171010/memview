@@ -349,10 +349,12 @@ interface IFavoritePopupViewState {
     clientX: number;
     clientY: number;
     favoriteInfoAry: IFavoriteInfo[];
+    renderedWidth?: number;
 }
 
 export class FavoritePopupView extends React.Component<{}, IFavoritePopupViewState> {
     static GlobalPtr: FavoritePopupView;
+    private popupRef = React.createRef<HTMLDivElement>();
 
     constructor(props: {}) {
         super(props);
@@ -479,16 +481,29 @@ export class FavoritePopupView extends React.Component<{}, IFavoritePopupViewSta
         }
     }
 
+    componentDidUpdate() {
+        if (this.state.isOpen && this.popupRef.current) {
+            const width = this.popupRef.current.offsetWidth;
+            if (width !== this.state.renderedWidth) {
+                this.setState({ renderedWidth: width });
+            }
+        }
+    }
+
     render() {
         let key = 0;
+        const estimatedWidth = 400;
+        const width = this.state.renderedWidth || estimatedWidth;
+        const left = Math.max(0, Math.min(this.state.clientX, window.innerWidth - width - 20));
         return (
             <div key={key++} style={{ display: this.state.isOpen ? '' : 'none' }}>
                 <div
                     key={key++}
                     className='popup'
+                    ref={this.popupRef}
                     style={{
-                        top: this.state.clientY,
-                        left: this.state.clientX,
+                        top: 0,
+                        left: left,
                         marginTop: '0px',
                         display: 'flex',
                         flexDirection: 'column',
@@ -595,12 +610,14 @@ interface IViewSettingsState {
     isOpen: boolean;
     clientX: number;
     clientY: number;
+    renderedWidth?: number;
 }
 export class ViewSettings extends React.Component<IViewSettingsProps, IViewSettingsState> {
     static GlobalPtr: ViewSettings;
     private exprRef = React.createRef<any>();
     private sizeRef = React.createRef<any>();
     private displayNameRef = React.createRef<any>();
+    private popupRef = React.createRef<HTMLDivElement>();
     private endian: string;
     private format: string;
     private column: string;
@@ -708,16 +725,27 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
         }
     }
 
+    componentDidUpdate() {
+        if (this.state.isOpen && this.popupRef.current) {
+            const width = this.popupRef.current.offsetWidth;
+            if (width !== this.state.renderedWidth) {
+                this.setState({ renderedWidth: width });
+            }
+        }
+    }
+
     render(): React.ReactNode {
         let key = 0;
         const estimatedWidth = 500;
-        const left = (this.state.clientX + estimatedWidth < window.innerWidth) ? this.state.clientX : 10;
+        const width = this.state.renderedWidth || estimatedWidth;
+        const left = Math.max(0, Math.min(this.state.clientX, window.innerWidth - width - 20));
         return (
             <div key={key++} style={{ display: +this.state.isOpen ? '' : 'none' }}>
                 <div
                     key={key++}
                     className='popup'
                     id='view-settings'
+                    ref={this.popupRef}
                     style={{
                         top: 0,
                         left: left,
@@ -884,11 +912,13 @@ interface IAddPopupViewState {
     isOpen: boolean;
     clientX: number;
     clientY: number;
+    renderedWidth?: number;
 }
 export class AddPopupView extends React.Component<IAddPopupViewProps, IAddPopupViewState> {
     static GlobalPtr: AddPopupView;
     private exprRef = React.createRef<any>();
     private sizeRef = React.createRef<any>();
+    private popupRef = React.createRef<HTMLDivElement>();
 
     constructor(props: IAddPopupViewProps) {
         super(props);
@@ -945,17 +975,28 @@ export class AddPopupView extends React.Component<IAddPopupViewProps, IAddPopupV
         }
     }
 
+    componentDidUpdate() {
+        if (this.state.isOpen && this.popupRef.current) {
+            const width = this.popupRef.current.offsetWidth;
+            if (width !== this.state.renderedWidth) {
+                this.setState({ renderedWidth: width });
+            }
+        }
+    }
+
     render(): React.ReactNode {
         let key = 0;
         const widthCh = 40;
         const estimatedWidth = widthCh * 10;
-        const left = (this.state.clientX + estimatedWidth < window.innerWidth) ? this.state.clientX : 10;
+        const width = this.state.renderedWidth || estimatedWidth;
+        const left = Math.max(0, Math.min(this.state.clientX, window.innerWidth - width - 20));
         return (
             <div key={key++} style={{ display: +this.state.isOpen ? '' : 'none' }}>
                 <div
                     key={key++}
                     className='popup'
                     id='add-popup-view'
+                    ref={this.popupRef}
                     style={{
                         width: `${widthCh}ch`,
                         top: 0,
