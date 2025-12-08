@@ -15,6 +15,15 @@ export function globalsInit() {
     }
     myGlobals.selContext = new SelContext();
     myGlobals.viewType = window.viewType;
+
+    addMessageHandler(CmdType.SetDocuments, (body) => {
+        documentManager.restoreSerializableAll(body);
+        // We also need to emit an event to ensure UI updates if restoreSerializableAll didn't emit enough
+        // But restoreSerializableAll calls updateFromSerializable which emits CurrentDoc event.
+        // We might want to emit 'Refresh' or similar if needed.
+        // For now, let's assume updateFromSerializable is enough.
+        documentManager.globalEventEmitter.emit('any', {});
+    });
 }
 
 import {

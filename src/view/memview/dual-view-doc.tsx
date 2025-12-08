@@ -235,14 +235,29 @@ export class DocumentManager {
     }
 
     public restoreSerializableAll(documents: IWebviewDocXfer[]) {
-        this.currentDoc = undefined;
-        this.allDocuments = {};
-        let lastDoc = undefined;
+        const newDocsMap = new Map<string, IWebviewDocXfer>();
+        documents.forEach(d => newDocsMap.set(d.docId, d));
+
+        // Remove missing docs
+        for (const docId of Object.keys(this.allDocuments)) {
+            if (!newDocsMap.has(docId)) {
+                this.removeDocument(docId);
+            }
+        }
+
+        let lastDoc: DualViewDoc | undefined;
         for (const item of documents) {
-            const xferObj = item as IWebviewDocXfer;
-            const doc = new DualViewDoc(xferObj, this);
-            doc.isReady = false;
+            let doc = this.allDocuments[item.docId];
+            if (doc) {
+                doc.updateFromSerializable(item);
+            } else {
+                doc = new DualViewDoc(item, this);
+                doc.isReady = false;
+            }
             lastDoc = doc;
+            if (item.isCurrentDoc) {
+                this.setCurrentDoc(doc);
+            }
         }
         if (DualViewDoc.InWebview() && Object.getOwnPropertyNames(this.allDocuments).length === 0) {
             lastDoc = DualViewDoc.createDummyDoc(this);
@@ -318,6 +333,38 @@ export class DualViewDoc {
         // console.log(info.clientState);
         this.clientState = info.clientState || {};
         this.manager.addDocument(this, !!info.isCurrentDoc);
+    }
+
+    updateFromSerializable(info: IWebviewDocXfer) {
+        this.setAddresses(BigInt(info.startAddress), BigInt(info.maxBytes));
+        this.displayName = info.displayName;
+        this.expr = info.expr;
+        this.size = info.size;
+        this.endian = info.endian ?? 'little';
+        this.format = info.format ?? '4-byte';
+        this.column = info.column ?? '4';
+        this.bytesPerRow = this.getBytesPerCell(this.format) * Number(this.column);
+        this.wsFolder = info.wsFolder;
+        this.sessionId = info.sessionId;
+        this.sessionName = info.sessionName;
+        this.isReadonly = info.isReadOnly;
+        this.startAddressStale = info.baseAddressStale;
+        this.maxBytesStale = info.maxBytesStale;
+        this.PageSize = 16 * this.bytesPerRow;
+        this.SubPageSize = this.PageSize / 8;
+        
+        this.modifiedMap.clear();
+        if (info.modifiedMap) {
+            for (const [key, value] of Object.entries(info.modifiedMap)) {
+                this.modifiedMap.set(BigInt(key), value);
+            }
+        }
+        
+        if (this.startAddressStale || this.maxBytesStale) {
+             this.markAsStale();
+        }
+        
+        this.emitGlobalEvent(DualViewDocGlobalEventType.CurrentDoc);
     }
 
     static InWebview() {

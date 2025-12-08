@@ -81,12 +81,11 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
 
         // TODO: adjust for byte-length
         const intVal = parseInt(val, 16);
-        if (this.props.cellInfo.cur !== intVal) {
-            this.props.cellInfo.cur = intVal;
-            documentManager.currentDoc?.setExpr(this.props.address, '0x' + val, this.props.bytesPerCell);
-            if (this.props.onChange) {
-                this.props.onChange(this.props.address, intVal);
-            }
+        // Always write, even if value is same, to support write-1-to-clear registers
+        this.props.cellInfo.cur = intVal;
+        documentManager.currentDoc?.setExpr(this.props.address, '0x' + val, this.props.bytesPerCell);
+        if (this.props.onChange) {
+            this.props.onChange(this.props.address, intVal);
         }
     };
 
@@ -141,7 +140,22 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
         }
         HexCellValue.printJunk('onKeyDown');
         let v: string = HexCellValue.lastGoodValue;
-        if (event.key === 'Enter' || event.key === 'Tab') {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            if (v) {
+                HexCellValue.newGoodValue = v;
+                this.onValueChanged(v);
+            } else {
+                HexCellValue.revertEditsInDOM(HexCellValue.currentDOMElt, this.valueStr());
+            }
+            if (HexCellValue.currentDOMElt) {
+                HexCellValue.currentDOMElt.blur();
+            }
+            SelContext.current?.clear();
+            return;
+        }
+
+        if (event.key === 'Tab') {
             if (v === '') {
                 HexCellValue.revertEditsInDOM(HexCellValue.currentDOMElt, this.valueStr());
                 return;
