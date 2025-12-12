@@ -1,0 +1,32 @@
+.search-widget {
+    position: absolute;
+    top: 40px; /* Below the toolbar */
+    right: 20px;
+    z-index: 1000;
+    background-color: var(--vscode-editorWidget-background);
+    border: 1px solid var(--vscode-editorWidget-border);
+    box-shadow: 0 2px 8px var(--vscode-widget-shadow);
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    border-radius: 3px;
+}
+
+.search-widget-input-container {
+    margin-right: 4px;
+}
+
+.search-input {
+    min-width: 200px;
+}
+
+.search-info {
+    margin: 0 8px;
+    font-size: 12px;
+    color: var(--vscode-descriptionForeground);
+    white-space: nowrap;
+}
+
+.search-widget-actions {
+    display: flex;
+}

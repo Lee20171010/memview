@@ -117,6 +117,7 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
         this.maxNumRows = Math.ceil(Number(this.state.maxNumBytes) / this.bytesPerRow);
         DualViewDoc.globalEventEmitter.addListener('any', this.onGlobalEventFunc);
         DualViewDoc.globalEventEmitter.addListener(DualViewDocGlobalEventType.ScrollToBottom, this.onScrollToBottomFunc);
+        DualViewDoc.globalEventEmitter.addListener(DualViewDocGlobalEventType.ScrollToAddress, this.onScrollToAddressFunc);
         SelContext.eventEmitter.addListener('changed', () => {
             this.setState({ selChangedToggle: !this.state.selChangedToggle });
         });
@@ -178,6 +179,17 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
         } else if (this.listElementRef) {
             const idx = this.maxNumRows > 0 ? this.maxNumRows - 1 : 0;
             this.listElementRef.scrollToItem(idx);
+        }
+    }
+
+    private onScrollToAddressFunc = this.onScrollToAddress.bind(this);
+    private onScrollToAddress(arg: IDualViewDocGlobalEventArg) {
+        if (arg.scrollToAddress !== undefined && this.listElementRef) {
+            const offset = arg.scrollToAddress - this.state.baseAddress;
+            if (offset >= 0 && offset < this.state.maxNumBytes) {
+                const rowIndex = Math.floor(Number(offset) / this.bytesPerRow);
+                this.listElementRef.scrollToItem(rowIndex, 'start');
+            }
         }
     }
 

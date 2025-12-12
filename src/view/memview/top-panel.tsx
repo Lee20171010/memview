@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { DocDebuggerStatus, DualViewDoc, IDualViewDocGlobalEventArg } from './dual-view-doc';
+import { DocDebuggerStatus, DualViewDoc, IDualViewDocGlobalEventArg, DualViewDocGlobalEventType } from './dual-view-doc';
+import { SearchWidget } from './search-widget';
 import {
     VSCodeButton,
     VSCodeDivider,
@@ -32,6 +33,9 @@ interface IMemViewPanelState {
     sessionId: string;
     sessionStatus: DocDebuggerStatus;
     docId: string;
+    isSearchOpen: boolean;
+    searchResults: bigint[];
+    currentResultIndex: number;
 }
 
 export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemViewPanelState> {
@@ -41,11 +45,24 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
             width: window.innerWidth,
             sessionId: DualViewDoc.currentDoc?.sessionId || UnknownDocId,
             sessionStatus: DualViewDoc.currentDoc?.sessionStatus || DocDebuggerStatus.Default,
-            docId: DualViewDoc.currentDoc?.docId || UnknownDocId
+            docId: DualViewDoc.currentDoc?.docId || UnknownDocId,
+            isSearchOpen: false,
+            searchResults: [],
+            currentResultIndex: -1
         };
         window.addEventListener('resize', this.onResize.bind(this));
         DualViewDoc.globalEventEmitter.addListener('any', this.onGlobalEvent.bind(this));
+        window.addEventListener('keydown', this.onWindowKeyDown.bind(this), true);
     }
+
+    private onWindowKeyDown(e: KeyboardEvent) {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+            e.preventDefault();
+            e.stopPropagation();
+            this.setState({ isSearchOpen: !this.state.isSearchOpen });
+        }
+    }
+
 
     private onGlobalEvent(arg: IDualViewDocGlobalEventArg) {
         // false && console.log('MemViewToolbar.onGlobalEvent', arg);
@@ -192,6 +209,73 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
         FavoritePopupView.open(ev);
     }
 
+    private onSearch(text: string) {
+        if (DualViewDoc.currentDoc) {
+            DualViewDoc.searchMemory(text)
+                .then((results) => {
+                    if (results.length > 0) {
+                        // Find the first result that is >= current address
+                        let index = 0;
+                        if (SelContext.current && SelContext.current.current !== undefined) {
+                            const currentAddr = SelContext.current.current;
+                            // Find first result > currentAddr
+                            const foundIndex = results.findIndex(addr => addr > currentAddr);
+                            if (foundIndex !== -1) {
+                                index = foundIndex;
+                            }
+                        }
+                        
+                        this.setState({
+                            searchResults: results,
+                            currentResultIndex: index
+                        });
+                        this.handleFoundAddress(results[index]);
+                    } else {
+                        this.setState({
+                            searchResults: [],
+                            currentResultIndex: -1
+                        });
+                    }
+                });
+        }
+    }
+
+    private onNextMatch() {
+        const { searchResults, currentResultIndex } = this.state;
+        if (searchResults.length === 0) return;
+
+        const nextIndex = (currentResultIndex + 1) % searchResults.length;
+        this.setState({ currentResultIndex: nextIndex });
+        this.handleFoundAddress(searchResults[nextIndex]);
+    }
+
+    private onPreviousMatch() {
+        const { searchResults, currentResultIndex } = this.state;
+        if (searchResults.length === 0) return;
+
+        const prevIndex = (currentResultIndex - 1 + searchResults.length) % searchResults.length;
+        this.setState({ currentResultIndex: prevIndex });
+        this.handleFoundAddress(searchResults[prevIndex]);
+    }
+
+    private handleFoundAddress(addr: bigint) {
+        if (DualViewDoc.currentDoc) {
+            SelContext.current?.setSimpleSelection(addr);
+            const arg: IDualViewDocGlobalEventArg = {
+                type: DualViewDocGlobalEventType.ScrollToAddress,
+                baseAddress: DualViewDoc.currentDoc.baseAddress,
+                maxBytes: DualViewDoc.currentDoc.maxBytes,
+                docId: DualViewDoc.currentDoc.docId,
+                scrollToAddress: addr
+            };
+            DualViewDoc.globalEventEmitter.emit(DualViewDocGlobalEventType.ScrollToAddress, arg);
+        }
+    }
+
+    private onCloseSearch() {
+        this.setState({ isSearchOpen: false });
+    }
+
     render() {
         // console.log('In MemViewToolbar.render');
         const docItems = [];
@@ -305,6 +389,15 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
                 <ViewSettings {...editProps}></ViewSettings>
                 <AddPopupView {...addProps}></AddPopupView>
                 <FavoritePopupView></FavoritePopupView>
+                <SearchWidget
+                    visible={this.state.isSearchOpen}
+                    onSearch={this.onSearch.bind(this)}
+                    onClose={this.onCloseSearch.bind(this)}
+                    onNext={this.onNextMatch.bind(this)}
+                    onPrevious={this.onPreviousMatch.bind(this)}
+                    resultCount={this.state.searchResults.length}
+                    currentResultIndex={this.state.currentResultIndex}
+                />
             </div>
         );
     }

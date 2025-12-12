@@ -40,7 +40,8 @@ export enum DualViewDocGlobalEventType {
     CurrentDoc = 'current-doc',
     DebuggerStatus = 'debugger-status',
     BaseAddress = 'base-address',
-    ScrollToBottom = 'scroll-to-bottom'
+    ScrollToBottom = 'scroll-to-bottom',
+    ScrollToAddress = 'scroll-to-address'
 }
 
 export enum DocDebuggerStatus {
@@ -60,6 +61,7 @@ export interface IDualViewDocGlobalEventArg {
     maxBytes: bigint;
     docId: string;
     sessionId?: string;
+    scrollToAddress?: bigint;
 }
 
 export const DummyByte: IMemValue = { cur: -1, orig: -1, stale: true, inRange: false };
@@ -821,6 +823,30 @@ export class DualViewDoc {
         doc.memory.createDummyPage(initString /*.replace(/ /g, '-')*/);
         return doc;
     }
+
+    public static async searchMemory(pattern: string): Promise<bigint[]> {
+        // 1. Prepare for Content Search
+        let hexPattern = pattern.trim();
+        hexPattern = hexPattern.replace(/\s/g, '');
+        
+        // Remove 0x prefix if present
+        if (hexPattern.toLowerCase().startsWith('0x')) {
+            hexPattern = hexPattern.substring(2);
+        }
+
+        // 2. Try Local Visual Content Search
+        // Check if it is a valid hex string
+        if (/^[0-9A-Fa-f]+$/.test(hexPattern)) {
+            if (DualViewDoc.currentDoc && DualViewDoc.currentDoc.memory) {
+                 const bytesPerCell = DualViewDoc.currentDoc.getBytesPerCell(DualViewDoc.currentDoc.format);
+                 const isBigEndian = DualViewDoc.currentDoc.endian === 'big';
+                 
+                 return DualViewDoc.currentDoc.memory.searchVisual(hexPattern, bytesPerCell, isBigEndian);
+            }
+        }
+
+        return [];
+    }
 }
 
 function isEmpty(obj: any) {
@@ -850,6 +876,41 @@ class MemPages {
 
     public numPages(): number {
         return this.pages.length;
+    }
+
+    public searchVisual(pattern: string, bytesPerCell: number, isBigEndian: boolean): bigint[] {
+        const pageSize = DualViewDoc.currentDoc?.PageSize || 512;
+        pattern = pattern.toLowerCase();
+        const results: bigint[] = [];
+
+        for (let i = 0; i < this.pages.length; i++) {
+            const page = this.pages[i];
+            if (!page || page.stale || !page.current || page.current.length === 0) {
+                continue;
+            }
+            
+            const buf = page.current;
+            const pageAddr = this.baseAddress + BigInt(i * pageSize);
+
+            // Iterate by cell to match the visual representation
+            for (let offset = 0; offset <= buf.length - bytesPerCell; offset += bytesPerCell) {
+                let hexStr = '';
+                if (isBigEndian) {
+                    for(let k=0; k<bytesPerCell; k++) {
+                        hexStr += buf[offset + k].toString(16).padStart(2, '0');
+                    }
+                } else {
+                    for(let k=bytesPerCell-1; k>=0; k--) {
+                        hexStr += buf[offset + k].toString(16).padStart(2, '0');
+                    }
+                }
+
+                if (hexStr.includes(pattern)) {
+                    results.push(pageAddr + BigInt(offset));
+                }
+            }
+        }
+        return results;
     }
 
     createDummyPage(str: string) {

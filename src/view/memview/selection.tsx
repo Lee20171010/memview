@@ -62,6 +62,13 @@ export class SelContext {
         SelContext.eventEmitter.emit('changed', this.range);
     }
 
+    public setSimpleSelection(address: bigint) {
+        const doc = DualViewDoc.currentDoc;
+        this.current = address;
+        this.range = new SelRange(address, address + BigInt(doc?.getBytesPerCell(doc.format) || 1) - 1n);
+        SelContext.eventEmitter.emit('changed', this.range);
+    }
+
     public clear() {
         if (!this.range || this.range.start !== this.range.end) {
             SelContext.eventEmitter.emit('changed', undefined);
