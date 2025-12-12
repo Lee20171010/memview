@@ -4,6 +4,7 @@ export const UnknownDocId = 'Unknown';
 
 export enum CmdType {
     GetDocuments = 'GetDocuments',
+    SetDocuments = 'SetDocuments',
     GetMemory = 'GetMemory',
     SetByte = 'GetMemory',
     SetExpr = 'SetExpr',

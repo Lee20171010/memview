@@ -845,6 +845,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                         style={{ width: '100%' }}
                         ref={this.exprRef}
                         value={this.state.settings.expr}
+                        onKeyDown={this.onKeyDownFunc}
                     >
                         {bigLabel}
                     </VSCodeTextField>
@@ -856,6 +857,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                         style={{ width: '100%' }}
                         ref={this.displayNameRef}
                         value={this.state.settings.displayName}
+                        onKeyDown={this.onKeyDownFunc}
                     >
                         Display Name
                     </VSCodeTextField>
@@ -903,6 +905,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                                 type='text'
                                 value={this.column}
                                 onChange={this.onColumnsChangeFunc}
+                                onKeyDown={this.onKeyDownFunc}
                             ></VSCodeTextField>
                         </div>
                     </div>
@@ -917,6 +920,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                             style={{ width: '78%' }}
                             ref={this.sizeRef}
                             value={this.state.settings.size}
+                            onKeyDown={this.onKeyDownFunc}
                         ></VSCodeTextField>
                     </div>
                     <br key={key++}></br>

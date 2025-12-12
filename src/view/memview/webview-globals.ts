@@ -5,6 +5,15 @@ export function globalsInit() {
     window.addEventListener('message', vscodeReceiveMessage);
     myGlobals.vscode = acquireVsCodeApi();
     myGlobals.selContext = new SelContext();
+
+    addMessageHandler(CmdType.SetDocuments, (body) => {
+        DualViewDoc.restoreSerializableAll(body);
+        // We also need to emit an event to ensure UI updates if restoreSerializableAll didn't emit enough
+        // But restoreSerializableAll calls updateFromSerializable which emits CurrentDoc event.
+        // We might want to emit 'Refresh' or similar if needed.
+        // For now, let's assume updateFromSerializable is enough.
+        DualViewDoc.globalEventEmitter.emit('any', {});
+    });
 }
 
 import {

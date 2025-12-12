@@ -80,13 +80,12 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
 
         // TODO: adjust for byte-length
         const intVal = parseInt(val, 16);
-        if (this.props.cellInfo.cur !== intVal) {
-            this.props.cellInfo.cur = intVal;
-            // DualViewDoc.setCurrentDocByte(this.props.address, intVal);
-            DualViewDoc.setCurrentDocExpr(this.props.address, '0x' + val, this.props.bytesPerCell);
-            if (this.props.onChange) {
-                this.props.onChange(this.props.address, intVal);
-            }
+        // Always write, even if value is same, to support write-1-to-clear registers
+        this.props.cellInfo.cur = intVal;
+        // DualViewDoc.setCurrentDocByte(this.props.address, intVal);
+        DualViewDoc.setCurrentDocExpr(this.props.address, '0x' + val, this.props.bytesPerCell);
+        if (this.props.onChange) {
+            this.props.onChange(this.props.address, intVal);
         }
     };
 
@@ -141,7 +140,22 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
         }
         HexCellValue.printJunk('onKeyDown');
         let v: string = HexCellValue.lastGoodValue;
-        if (event.key === 'Enter' || event.key === 'Tab') {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            if (v) {
+                HexCellValue.newGoodValue = v;
+                this.onValueChanged(v);
+            } else {
+                HexCellValue.revertEditsInDOM(HexCellValue.currentDOMElt, this.valueStr());
+            }
+            if (HexCellValue.currentDOMElt) {
+                HexCellValue.currentDOMElt.blur();
+            }
+            SelContext.current?.clear();
+            return;
+        }
+
+        if (event.key === 'Tab') {
             if (v === '') {
                 HexCellValue.revertEditsInDOM(HexCellValue.currentDOMElt, this.valueStr());
                 return;
@@ -382,23 +396,21 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
     private onRowChangeFunc = this.rowChanged.bind(this);
     private mountStatus = false;
     private bytesInRow = DualViewDoc.currentDoc?.bytesPerRow || 16;
-    private static bytePerWord: 1 | 2 | 4 | 8;
-    private static byteOrder: number[] = [];
-    private static isBigEndian = false;
+    private bytePerWord: 1 | 2 | 4 | 8;
+    private byteOrder: number[] = [];
+    private isBigEndian = false;
     private myRef = React.createRef<HTMLDivElement>();
     constructor(public props: IHexDataRow) {
         super(props);
-        if (HexDataRow.byteOrder.length === 0) {
-            HexDataRow.bytePerWord = DualViewDoc.currentDoc?.getBytesPerCell(DualViewDoc.currentDoc.format) || 1;
-            HexDataRow.isBigEndian = DualViewDoc.currentDoc?.endian === 'big';
-            if (HexDataRow.isBigEndian) {
-                for (let ix = 0; ix < HexDataRow.bytePerWord; ix++) {
-                    HexDataRow.byteOrder.push(ix);
-                }
-            } else {
-                for (let ix = HexDataRow.bytePerWord - 1; ix >= 0; ix--) {
-                    HexDataRow.byteOrder.push(ix);
-                }
+        this.bytePerWord = DualViewDoc.currentDoc?.getBytesPerCell(DualViewDoc.currentDoc.format) || 1;
+        this.isBigEndian = DualViewDoc.currentDoc?.endian === 'big';
+        if (this.isBigEndian) {
+            for (let ix = 0; ix < this.bytePerWord; ix++) {
+                this.byteOrder.push(ix);
+            }
+        } else {
+            for (let ix = this.bytePerWord - 1; ix >= 0; ix--) {
+                this.byteOrder.push(ix);
             }
         }
         this.bytesInRow = DualViewDoc.currentDoc?.bytesPerRow || 16;
@@ -414,11 +426,11 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
 
     private convertToWords(bytes: IMemValue[]): IMemValue16or32or64[] {
         const ret: IMemValue16or32or64[] = [];
-        if (HexDataRow.bytePerWord === 1) {
+        if (this.bytePerWord === 1) {
             return ret;  // No conversion needed for single bytes
         }
         
-        const len = HexDataRow.bytePerWord;  // 2, 4, or 8
+        const len = this.bytePerWord;  // 2, 4, or 8
         
         // Process each multi-byte group
         for (let start = 0; start < this.bytesInRow; start += len) {
@@ -430,7 +442,7 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
             
             try {
                 // Combine bytes according to byte order (endianness)
-                for (const ix of HexDataRow.byteOrder) {
+                for (const ix of this.byteOrder) {
                     const byte = bytes[start + ix];
                     if (byte.cur < 0) {
                         invalid = true;
@@ -488,7 +500,7 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
     }
 
     public getRowValues(): CellInfoType[] {
-        return HexDataRow.bytePerWord === 1 ? this.state.bytes : this.state.words;
+        return this.bytePerWord === 1 ? this.state.bytes : this.state.words;
     }
 
     async componentDidMount() {
@@ -533,18 +545,18 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
         const values = [];
         const chars = [];
         let key = 1;
-        for (let ix = 0; ix < this.bytesInRow / HexDataRow.bytePerWord; ix++) {
-            const addr = this.props.address + BigInt(ix * HexDataRow.bytePerWord);
+        for (let ix = 0; ix < this.bytesInRow / this.bytePerWord; ix++) {
+            const addr = this.props.address + BigInt(ix * this.bytePerWord);
             values.push(
                 <HexCellValue
-                    bytesPerCell={HexDataRow.bytePerWord}
+                    bytesPerCell={this.bytePerWord}
                     key={key++}
                     address={addr}
-                    cellInfo={HexDataRow.bytePerWord === 1 ? this.state.bytes[ix] : this.state.words[ix]}
+                    cellInfo={this.bytePerWord === 1 ? this.state.bytes[ix] : this.state.words[ix]}
                     onChange={this.onRowChangeFunc}
                 />
             );
-            if (HexDataRow.bytePerWord === 1) {
+            if (this.bytePerWord === 1) {
                 chars.push(<HexCellChar address={addr} byteInfo={this.state.bytes[ix]} key={key++} />);
             }
         }

@@ -92,6 +92,8 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
     private onScrollFunc = this.onScroll.bind(this);
     private lineHeightDetectTimer: NodeJS.Timeout | undefined = undefined;
     private bytesPerRow: number;
+    private format: string;
+    private endian: string;
     private maxNumRows: number;
     private listElementRef: any;
 
@@ -114,6 +116,8 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
         };
         // console.log('HexTableVirtual2 ctor()', this.state);
         this.bytesPerRow = doc?.bytesPerRow || 16;
+        this.format = doc?.format || '4-byte';
+        this.endian = doc?.endian || 'little';
         this.maxNumRows = Math.ceil(Number(this.state.maxNumBytes) / this.bytesPerRow);
         DualViewDoc.globalEventEmitter.addListener('any', this.onGlobalEventFunc);
         DualViewDoc.globalEventEmitter.addListener(DualViewDocGlobalEventType.ScrollToBottom, this.onScrollToBottomFunc);
@@ -125,30 +129,63 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
     }
 
     private onGlobalEventFunc = this.onGlobalEvent.bind(this);
-    private onGlobalEvent(arg: IDualViewDocGlobalEventArg) {
+    private onGlobalEvent(_arg: IDualViewDocGlobalEventArg) {
         const newState: IHexTableState = { ...this.state };
-        if (arg.docId && arg.docId !== this.state.docId) {
-            newState.docId = arg.docId;
+        let needsReload = false;
+        const doc = DualViewDoc.currentDoc;
+
+        if (doc) {
+            if (doc.docId !== this.state.docId) {
+                newState.docId = doc.docId;
+                newState.scrollTop = getDocStateScrollTop();
+                needsReload = true;
+            }
+            if (doc.sessionId !== this.state.sessionId) {
+                newState.sessionId = doc.sessionId;
+            }
+            if (doc.sessionStatus !== this.state.sessionStatus) {
+                newState.sessionStatus = doc.sessionStatus;
+            }
+            if (doc.baseAddress !== this.state.baseAddress) {
+                newState.baseAddress = doc.baseAddress;
+                needsReload = true;
+            }
+            if (doc.maxBytes !== this.state.maxNumBytes) {
+                newState.maxNumBytes = doc.maxBytes;
+                needsReload = true;
+            }
+
+            const newBytesPerRow = doc.bytesPerRow || 16;
+            if (this.bytesPerRow !== newBytesPerRow) {
+                this.bytesPerRow = newBytesPerRow;
+                needsReload = true;
+            }
+
+            if (this.format !== doc.format) {
+                this.format = doc.format;
+                needsReload = true;
+            }
+
+            if (this.endian !== doc.endian) {
+                this.endian = doc.endian;
+                needsReload = true;
+            }
+        } else if (this.state.docId !== UnknownDocId) {
+            newState.docId = UnknownDocId;
+            needsReload = true;
         }
-        if (arg.sessionId && arg.sessionId !== this.state.sessionId) {
-            newState.sessionId = arg.sessionId;
-        }
-        if (arg.sessionStatus && arg.sessionStatus !== this.state.sessionStatus) {
-            newState.sessionStatus = arg.sessionStatus;
-        }
-        if (arg.baseAddress && arg.baseAddress !== this.state.baseAddress) {
-            newState.baseAddress = arg.baseAddress ?? 0n;
-        }
-        if (arg.maxBytes && arg.maxBytes !== this.state.maxNumBytes) {
-            newState.maxNumBytes = arg.maxBytes ?? (4n * 1024n * 1024n);
-            this.maxNumRows = Math.ceil(Number(newState.maxNumBytes) / this.bytesPerRow);
-        }
-        if ((arg.baseAddress && arg.baseAddress !== this.state.baseAddress)
-            || (arg.maxBytes && arg.maxBytes !== this.state.maxNumBytes)) {
+
+        this.maxNumRows = Math.ceil(Number(newState.maxNumBytes) / this.bytesPerRow);
+
+        if (needsReload) {
             newState.items = [];
-            this.loadInitial(); // We need the items to be empty before calling this, not yet sure how to do that
         }
-        this.setState(newState);
+
+        this.setState(newState, () => {
+            if (needsReload) {
+                this.loadInitial();
+            }
+        });
     }
 
     private onScrollToBottomFunc = this.onScrollToBottom.bind(this);

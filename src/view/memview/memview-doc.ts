@@ -550,11 +550,9 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                             const oldAddr = doc.startAddress;
                             doc.getStartAddress().then((v) => {
                                 if (oldAddr !== v) {
-                                    // Do it the lazy way for now.
-                                    this.updateHtmlForInit();
-                                } else {
-                                    this.postResponse(body, v.toString());
+                                    this.updateWebviewDocs();
                                 }
+                                this.postResponse(body, v.toString());
                             });
                         } else {
                             this.postResponse(body, memCmd.def);
@@ -568,11 +566,9 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                             const oldSize = doc.maxBytes;
                             doc.getMaxBytes().then((v) => {
                                 if (oldSize !== v) {
-                                    // Do it the lazy way for now.
-                                    this.updateHtmlForInit();
-                                } else {
-                                    this.postResponse(body, v.toString());
+                                    this.updateWebviewDocs();
                                 }
+                                this.postResponse(body, v.toString());
                             });
                         } else {
                             this.postResponse(body, memCmd.def);
@@ -602,7 +598,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                             const memCmd = (body as ICmdSetExpr);
                             doc.setExprPage(memCmd.expr, memCmd.val, memCmd.count).then((value) => {
                                 DualViewDoc.markAllDocsStale();
-                                this.updateHtmlForInit();
+                                this.updateWebviewDocs();
                             });
                         }
                         break;
@@ -628,17 +624,17 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                         switch (button) {
                             case 'close': {
                                 DualViewDoc.removeDocument(body.docId);
-                                this.updateHtmlForInit();
+                                this.updateWebviewDocs();
                                 break;
                             }
                             case 'select': {
                                 DualViewDoc.setCurrentDoc(body.docId);
-                                this.updateHtmlForInit();
+                                this.updateWebviewDocs();
                                 break;
                             }
                             case 'refresh': {
                                 DualViewDoc.markAllDocsStale();
-                                this.updateHtmlForInit();
+                                this.updateWebviewDocs();
                                 break;
                             }
                             case 'copy-all-to-clipboard': {
@@ -681,8 +677,9 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                                 vscode.window.showInformationMessage(`Memory view size expression changed to ${newSettings.size}. ` +
                                     'The view contents will be updated the next time the debugger is paused');
                             }
+                            console.log('MemViewPanelProvider: SettingsChanged', (body as ICmdSettingsChanged).settings);
                             doc.updateSettings((body as ICmdSettingsChanged).settings);
-                            this.updateHtmlForInit();
+                            this.updateWebviewDocs();
                         }
                         break;
                     }
@@ -777,6 +774,16 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         this.webviewView?.webview.postMessage(obj);
     }
 
+    private postCommand(msg: ICmdBase, body: any) {
+        const obj: IMessage = {
+            type: 'command',
+            seq: msg.seq ?? 0,
+            command: msg.type,
+            body: body
+        };
+        this.webviewView?.webview.postMessage(obj);
+    }
+
     private postNotice(msg: ICmdBase, body: any) {
         const obj: IMessage = {
             type: 'notice',
@@ -814,6 +821,17 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             this.webviewView.webview.html = MemviewDocumentProvider.getWebviewContent(
                 this.webviewView.webview, this.context, '');
         }
+        MemViewPanelProvider.saveState();
+    }
+
+    private updateWebviewDocs() {
+        const docs = DualViewDoc.storeSerializableAll();
+        const msg: ICmdBase = {
+            type: CmdType.SetDocuments,
+            sessionId: '',
+            docId: ''
+        };
+        this.postCommand(msg, docs);
         MemViewPanelProvider.saveState();
     }
 
