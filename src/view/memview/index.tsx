@@ -1,13 +1,12 @@
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
-import { globalsInit, myGlobals, vscodePostCommand } from './webview-globals';
+import { globalsInit, myGlobals, vscodePostCommand, documentManager } from './webview-globals';
 import * as Utils from './utils';
 import { RecoilRoot } from 'recoil';
 import './index.css';
 // import { HexTableVirtual } from './hex-table-virtual';
 import { HexTableVirtual2 } from './hex-table-virtual2';
 import { MemViewToolbar } from './top-panel';
-import { DualViewDoc } from './dual-view-doc';
 import {
     ICmdGetMemory,
     ICmdGetStartAddress,
@@ -18,6 +17,23 @@ import {
     ICmdGetMaxBytes,
     ICmdSetExpr
 } from './shared';
+import {
+    provideVSCodeDesignSystem,
+    vsCodeButton,
+    vsCodeDivider,
+    vsCodeDropdown,
+    vsCodeOption,
+    vsCodeTextField
+} from '@vscode/webview-ui-toolkit';
+
+provideVSCodeDesignSystem().register(
+    vsCodeButton(),
+    vsCodeDivider(),
+    vsCodeDropdown(),
+    vsCodeOption(),
+    vsCodeTextField()
+);
+
 
 class MemoryInterfaceFromVSCode implements IMemoryInterfaceCommands {
     getStartAddress(arg: ICmdGetStartAddress): Promise<string> {
@@ -26,7 +42,7 @@ class MemoryInterfaceFromVSCode implements IMemoryInterfaceCommands {
     getMaxBytes(arg: ICmdGetMaxBytes): Promise<string> {
         return vscodePostCommand(arg);
     }
-    getMemory(arg: ICmdGetMemory): Promise<Buffer> {
+    getMemory(arg: ICmdGetMemory): Promise<Uint8Array> {
         return vscodePostCommand(arg);
     }
     setMemory(arg: ICmdSetMemory): Promise<boolean> {
@@ -42,7 +58,7 @@ const timer = new Utils.Timekeeper();
 
 function doStartup() {
     globalsInit();
-    DualViewDoc.init(new MemoryInterfaceFromVSCode());
+    documentManager.init(new MemoryInterfaceFromVSCode());
 
     const promises = [];
     const msg: ICmdBase = {
