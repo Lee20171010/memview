@@ -137,6 +137,10 @@ body {
     font-weight: bold;
 }
 
+.hex-cell-address-32 {
+    width: 10ch;
+}
+
 .hex-cell-invisible {
     visibility: hidden;
 }

@@ -1,18 +1,29 @@
 
 declare function acquireVsCodeApi(): IVsCodeApi;
 
+declare global {
+    interface Window {
+        initialDataFromVSCode: string;
+        viewType: string;
+    }
+}
+
 export function globalsInit() {
     window.addEventListener('message', vscodeReceiveMessage);
     myGlobals.vscode = acquireVsCodeApi();
     myGlobals.selContext = new SelContext();
+    myGlobals.viewType = window.viewType;
+    if (myGlobals.vscode) {
+        setVsCodeApi(myGlobals.vscode);
+    }
 
     addMessageHandler(CmdType.SetDocuments, (body) => {
-        DualViewDoc.restoreSerializableAll(body);
+        documentManager.restoreSerializableAll(body);
         // We also need to emit an event to ensure UI updates if restoreSerializableAll didn't emit enough
         // But restoreSerializableAll calls updateFromSerializable which emits CurrentDoc event.
         // We might want to emit 'Refresh' or similar if needed.
         // For now, let's assume updateFromSerializable is enough.
-        DualViewDoc.globalEventEmitter.emit('any', {});
+        documentManager.globalEventEmitter.emit('any', {});
     });
 }
 
@@ -20,7 +31,8 @@ import {
     atom,
     RecoilState,
 } from 'recoil';
-import { DualViewDoc, DualViewDocGlobalEventType, IDualViewDocGlobalEventArg } from './dual-view-doc';
+import { setVsCodeApi, vscodePostCommand, vscodePostCommandNoResponse, getPendingRequest, removePendingRequest } from './connection';
+import { DualViewDocGlobalEventType, IDualViewDocGlobalEventArg, DocumentManager } from './dual-view-doc';
 import { MsgResponse, ICmdBase, IMessage, CmdType } from './shared';
 import { WebviewDebugTracker } from './webview-debug-tracker';
 import { SelContext } from './selection';
@@ -34,10 +46,13 @@ export interface IVsCodeApi {
 export interface IMyGlobals {
     vscode?: IVsCodeApi;
     selContext?: SelContext;
+    viewType?: string;
 }
 
 export const myGlobals: IMyGlobals = {
 };
+
+export const documentManager = new DocumentManager();
 
 export const frozenState: RecoilState<boolean> = atom({
     key: 'frozenState', // unique ID (with respect to other atoms/selectors)
@@ -60,28 +75,8 @@ export function vscodeSetState<T>(item: string, v: T): void {
 
 type CommandHandler = (event: any) => void;
 const commandHanders: { [command: string]: CommandHandler[] } = {};
-const pendingRequests: { [id: number]: MsgResponse } = {};
-let seqNumber = 0;
 
-function getSeqNumber(): number {
-    if (seqNumber > (1 << 30)) {
-        seqNumber = 0;
-    }
-    return ++seqNumber;
-}
-
-export function vscodePostCommand(msg: ICmdBase): Promise<any> {
-    return new Promise((resolve) => {
-        msg.seq = getSeqNumber();
-        pendingRequests[seqNumber] = { request: msg, resolve: resolve };
-        myGlobals.vscode?.postMessage({ type: 'command', body: msg });
-    });
-}
-
-export function vscodePostCommandNoResponse(msg: ICmdBase): void {
-    msg.seq = getSeqNumber();
-    myGlobals.vscode?.postMessage({ type: 'command', body: msg });
-}
+export { vscodePostCommand, vscodePostCommandNoResponse };
 
 function vscodeReceiveMessage(event: any) {
     const data = event.data as IMessage;
@@ -109,13 +104,13 @@ function vscodeReceiveMessage(event: any) {
 
 function recieveResponseFromVSCode(response: IMessage) {
     const seq = response.seq;
-    const pending = pendingRequests[seq];
+    const pending = getPendingRequest(seq);
     if (pending && pending.resolve) {
         switch (response.command) {
             // Some commands don't need any translation. Only deal with
             // those that need it
             case CmdType.GetDocuments: {
-                DualViewDoc.restoreSerializableAll(response.body);
+                documentManager.restoreSerializableAll(response.body);
                 pending.resolve(true);
                 break;
             }
@@ -125,8 +120,8 @@ function recieveResponseFromVSCode(response: IMessage) {
                 break;
             }
             case CmdType.GetFavoriteInfo: {
-                if (DualViewDoc) {
-                    DualViewDoc.favoriteInfoAry = response.body;
+                if (documentManager) {
+                    documentManager.favoriteInfoAry = response.body;
                 }
                 pending.resolve(true);
                 break;
@@ -139,7 +134,7 @@ function recieveResponseFromVSCode(response: IMessage) {
     } else {
         console.error(`No pending response for comand with id ${seq}`, response);
     }
-    delete pendingRequests[seq];
+    removePendingRequest(seq);
 }
 
 function recieveNoticeFromVSCode(notice: IMessage) {
@@ -155,7 +150,7 @@ function recieveNoticeFromVSCode(notice: IMessage) {
                 baseAddress: 0n, // Not used
                 maxBytes: 0n // Not used
             };
-            DualViewDoc.globalEventEmitter.emit(DualViewDocGlobalEventType.ScrollToBottom, arg);
+            documentManager.globalEventEmitter.emit(DualViewDocGlobalEventType.ScrollToBottom, arg);
             break;
         }
         default: {

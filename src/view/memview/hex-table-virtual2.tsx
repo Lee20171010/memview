@@ -6,7 +6,7 @@ import { FixedSizeList as List, ListOnScrollProps } from 'react-window';
 // import 'react-virtualized/styles.css';
 import { IHexDataRow, HexDataRow, HexHeaderRow, OnCellChangeFunc } from './hex-elements';
 import { DualViewDoc, IDualViewDocGlobalEventArg, DualViewDocGlobalEventType } from './dual-view-doc';
-import { vscodeGetState, vscodeSetState } from './webview-globals';
+import { vscodeGetState, vscodeSetState, documentManager } from './webview-globals';
 import { UnknownDocId } from './shared';
 import { SelContext } from './selection';
 
@@ -49,15 +49,15 @@ interface IHexTableState {
 
 function getDocStateScrollTop(): number {
     let v = 0;
-    if (DualViewDoc.currentDoc) {
-        v = DualViewDoc.currentDoc.getClientState<number>('scrollTop', 0);
+    if (documentManager.currentDoc) {
+        v = documentManager.currentDoc.getClientState<number>('scrollTop', 0);
     }
     return v;
 }
 
 async function setDocStateScrollTop(v: number) {
-    if (DualViewDoc.currentDoc) {
-        await DualViewDoc.currentDoc.setClientState<number>('scrollTop', v);
+    if (documentManager.currentDoc) {
+        await documentManager.currentDoc.setClientState<number>('scrollTop', v);
     }
 }
 
@@ -100,7 +100,7 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
     constructor(public props: IHexTableVirtual) {
         super(props);
 
-        const doc = DualViewDoc.currentDoc;
+        const doc = documentManager.currentDoc;
         this.state = {
             items: [],
             toolbarHeight: estimatedToolbarHeight,
@@ -119,9 +119,9 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
         this.format = doc?.format || '4-byte';
         this.endian = doc?.endian || 'little';
         this.maxNumRows = Math.ceil(Number(this.state.maxNumBytes) / this.bytesPerRow);
-        DualViewDoc.globalEventEmitter.addListener('any', this.onGlobalEventFunc);
-        DualViewDoc.globalEventEmitter.addListener(DualViewDocGlobalEventType.ScrollToBottom, this.onScrollToBottomFunc);
-        DualViewDoc.globalEventEmitter.addListener(DualViewDocGlobalEventType.ScrollToAddress, this.onScrollToAddressFunc);
+        documentManager.globalEventEmitter.addListener('any', this.onGlobalEventFunc);
+        documentManager.globalEventEmitter.addListener(DualViewDocGlobalEventType.ScrollToBottom, this.onScrollToBottomFunc);
+        documentManager.globalEventEmitter.addListener(DualViewDocGlobalEventType.ScrollToAddress, this.onScrollToAddressFunc);
         SelContext.eventEmitter.addListener('changed', () => {
             this.setState({ selChangedToggle: !this.state.selChangedToggle });
         });
@@ -132,7 +132,7 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
     private onGlobalEvent(_arg: IDualViewDocGlobalEventArg) {
         const newState: IHexTableState = { ...this.state };
         let needsReload = false;
-        const doc = DualViewDoc.currentDoc;
+        const doc = documentManager.currentDoc;
 
         if (doc) {
             if (doc.docId !== this.state.docId) {
@@ -327,7 +327,9 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
             const newItems = this.actuallyLoadMore(startIndex, stopIndex);
             const promises = [];
             for (const item of newItems) {
-                promises.push(DualViewDoc.getCurrentDocByte(item.address));
+                if (documentManager.currentDoc) {
+                    promises.push(documentManager.currentDoc.getByte(item.address));
+                }
             }
             Promise.all(promises)
                 .catch((e) => {

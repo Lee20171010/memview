@@ -94,6 +94,60 @@
                     "type": "webview",
                     "name": "MEMORY",
                     "when": "memory-view:showMemoryPanel && memory-view:memoryPanelLocation == panel"
+                },
+                {
+                    "id": "memory-view.memoryView1",
+                    "type": "webview",
+                    "name": "MEMORY 1",
+                    "when": "memory-view:showMemoryPanel1 && memory-view:memoryPanelLocation == panel"
+                },
+                {
+                    "id": "memory-view.memoryView2",
+                    "type": "webview",
+                    "name": "MEMORY 2",
+                    "when": "memory-view:showMemoryPanel2 && memory-view:memoryPanelLocation == panel"
+                },
+                {
+                    "id": "memory-view.memoryView3",
+                    "type": "webview",
+                    "name": "MEMORY 3",
+                    "when": "memory-view:showMemoryPanel3 && memory-view:memoryPanelLocation == panel"
+                },
+                {
+                    "id": "memory-view.memoryView4",
+                    "type": "webview",
+                    "name": "MEMORY 4",
+                    "when": "memory-view:showMemoryPanel4 && memory-view:memoryPanelLocation == panel"
+                },
+                {
+                    "id": "memory-view.memoryView5",
+                    "type": "webview",
+                    "name": "MEMORY 5",
+                    "when": "memory-view:showMemoryPanel5 && memory-view:memoryPanelLocation == panel"
+                },
+                {
+                    "id": "memory-view.memoryView6",
+                    "type": "webview",
+                    "name": "MEMORY 6",
+                    "when": "memory-view:showMemoryPanel6 && memory-view:memoryPanelLocation == panel"
+                },
+                {
+                    "id": "memory-view.memoryView7",
+                    "type": "webview",
+                    "name": "MEMORY 7",
+                    "when": "memory-view:showMemoryPanel7 && memory-view:memoryPanelLocation == panel"
+                },
+                {
+                    "id": "memory-view.memoryView8",
+                    "type": "webview",
+                    "name": "MEMORY 8",
+                    "when": "memory-view:showMemoryPanel8 && memory-view:memoryPanelLocation == panel"
+                },
+                {
+                    "id": "memory-view.memoryView9",
+                    "type": "webview",
+                    "name": "MEMORY 9",
+                    "when": "memory-view:showMemoryPanel9 && memory-view:memoryPanelLocation == panel"
                 }
             ]
         },

@@ -8,7 +8,7 @@ import {
     VSCodeOption,
     VSCodeTextField
 } from '@vscode/webview-ui-toolkit/react';
-import { vscodePostCommandNoResponse } from './webview-globals';
+import { vscodePostCommandNoResponse, documentManager, myGlobals } from './webview-globals';
 import {
     CmdButtonName,
     CmdType,
@@ -43,15 +43,15 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
         super(props);
         this.state = {
             width: window.innerWidth,
-            sessionId: DualViewDoc.currentDoc?.sessionId || UnknownDocId,
-            sessionStatus: DualViewDoc.currentDoc?.sessionStatus || DocDebuggerStatus.Default,
-            docId: DualViewDoc.currentDoc?.docId || UnknownDocId,
+            sessionId: documentManager.currentDoc?.sessionId || UnknownDocId,
+            sessionStatus: documentManager.currentDoc?.sessionStatus || DocDebuggerStatus.Default,
+            docId: documentManager.currentDoc?.docId || UnknownDocId,
             isSearchOpen: false,
             searchResults: [],
             currentResultIndex: -1
         };
         window.addEventListener('resize', this.onResize.bind(this));
-        DualViewDoc.globalEventEmitter.addListener('any', this.onGlobalEvent.bind(this));
+        documentManager.globalEventEmitter.addListener('any', this.onGlobalEvent.bind(this));
         window.addEventListener('keydown', this.onWindowKeyDown.bind(this), true);
     }
 
@@ -111,12 +111,12 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
     }
     private onAddInputDoneFunc = this.onAddInputDone.bind(this);
     private onAddInputDone(info: IAddMemoryInfo | undefined) {
-        if (info && DualViewDoc.currentDoc) {
+        if (info && documentManager.currentDoc) {
             const cmd: ICmdAddMemoryView = {
                 info: info,
                 type: CmdType.AddNewMemoryView,
-                sessionId: DualViewDoc.currentDoc.sessionId,
-                docId: DualViewDoc.currentDoc.docId
+                sessionId: documentManager.currentDoc.sessionId,
+                docId: documentManager.currentDoc.docId
             };
             vscodePostCommandNoResponse(cmd);
         }
@@ -159,12 +159,12 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
 
     private getViewProps(): IModifiableProps {
         const props: IModifiableProps = {
-            expr: DualViewDoc.currentDoc?.expr || '0',
-            size: DualViewDoc.currentDoc?.size || '4 * 1024 * 1024',
-            displayName: DualViewDoc.currentDoc?.displayName || 'Huh?',
-            endian: DualViewDoc.currentDoc?.endian || 'little',
-            format: DualViewDoc.currentDoc?.format || '4-byte',
-            column: DualViewDoc.currentDoc?.column || '8'
+            expr: documentManager.currentDoc?.expr || '0',
+            size: documentManager.currentDoc?.size || '4 * 1024 * 1024',
+            displayName: documentManager.currentDoc?.displayName || 'Huh?',
+            endian: documentManager.currentDoc?.endian || 'little',
+            format: documentManager.currentDoc?.format || '4-byte',
+            column: documentManager.currentDoc?.column || '4'
         };
         return props;
     }
@@ -175,12 +175,12 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
     }
     private onEditPropsDoneFunc = this.onEditPropsDone.bind(this);
     private onEditPropsDone(props: IModifiableProps | undefined) {
-        if (props && DualViewDoc.currentDoc) {
+        if (props && documentManager.currentDoc) {
             const cmd: ICmdSettingsChanged = {
                 settings: props,
                 type: CmdType.SettingsChanged,
-                sessionId: DualViewDoc.currentDoc.sessionId,
-                docId: DualViewDoc.currentDoc.docId
+                sessionId: documentManager.currentDoc.sessionId,
+                docId: documentManager.currentDoc.docId
             };
             vscodePostCommandNoResponse(cmd);
         }
@@ -209,9 +209,19 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
         FavoritePopupView.open(ev);
     }
 
+    private onClickOpenNewPanelFunc = this.onClickOpenNewPanel.bind(this);
+    private onClickOpenNewPanel() {
+        vscodePostCommandNoResponse(this.createCmd('open-new-panel'));
+    }
+
+    private onClickClosePanelFunc = this.onClickClosePanel.bind(this);
+    private onClickClosePanel() {
+        vscodePostCommandNoResponse(this.createCmd('close-panel'));
+    }
+
     private onSearch(text: string) {
-        if (DualViewDoc.currentDoc) {
-            DualViewDoc.searchMemory(text)
+        if (documentManager.currentDoc) {
+            documentManager.currentDoc.searchMemory(text)
                 .then((results) => {
                     if (results.length > 0) {
                         // Find the first result that is >= current address
@@ -259,16 +269,16 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
     }
 
     private handleFoundAddress(addr: bigint) {
-        if (DualViewDoc.currentDoc) {
+        if (documentManager.currentDoc) {
             SelContext.current?.setSimpleSelection(addr);
             const arg: IDualViewDocGlobalEventArg = {
                 type: DualViewDocGlobalEventType.ScrollToAddress,
-                baseAddress: DualViewDoc.currentDoc.baseAddress,
-                maxBytes: DualViewDoc.currentDoc.maxBytes,
-                docId: DualViewDoc.currentDoc.docId,
+                baseAddress: documentManager.currentDoc.baseAddress,
+                maxBytes: documentManager.currentDoc.maxBytes,
+                docId: documentManager.currentDoc.docId,
                 scrollToAddress: addr
             };
-            DualViewDoc.globalEventEmitter.emit(DualViewDocGlobalEventType.ScrollToAddress, arg);
+            documentManager.globalEventEmitter.emit(DualViewDocGlobalEventType.ScrollToAddress, arg);
         }
     }
 
@@ -282,7 +292,7 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
         let count = 0;
         let status = 'No status';
         let enableProps = false;
-        for (const doc of DualViewDoc.getBasicDocumentsList()) {
+        for (const doc of documentManager.getBasicDocumentsList()) {
             docItems.push(
                 <VSCodeOption key={count} selected={doc.isCurrent} value={doc.docId}>
                     {doc.displayName}
@@ -292,7 +302,7 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
             enableProps = enableProps || doc.docId !== UnknownDocId;
             count++;
         }
-        const isModified = DualViewDoc.currentDoc?.isModified;
+        const isModified = documentManager.currentDoc?.isModified;
         const isStopped = this.state.sessionStatus === DocDebuggerStatus.Stopped;
         const editProps: IViewSettingsProps = {
             settings: this.getViewProps(),
@@ -385,6 +395,30 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
                 >
                     <span className='codicon codicon-close'></span>
                 </VSCodeButton>
+                {myGlobals.viewType && myGlobals.viewType.startsWith('memory-view.memoryView') && (
+                    <>
+                        <VSCodeButton
+                            key={key++}
+                            appearance='icon'
+                            style={{ float: 'right' }}
+                            title='Open new panel'
+                            onClick={this.onClickOpenNewPanelFunc}
+                        >
+                            <span className='codicon codicon-add'></span>
+                        </VSCodeButton>
+                        {myGlobals.viewType !== 'memory-view.memoryView' && (
+                            <VSCodeButton
+                                key={key++}
+                                appearance='icon'
+                                style={{ float: 'right' }}
+                                title='Close panel'
+                                onClick={this.onClickClosePanelFunc}
+                            >
+                                <span className='codicon codicon-close'></span>
+                            </VSCodeButton>
+                        )}
+                    </>
+                )}
                 <VSCodeDivider key={key++} role='presentation'></VSCodeDivider>
                 <ViewSettings {...editProps}></ViewSettings>
                 <AddPopupView {...addProps}></AddPopupView>
@@ -448,8 +482,8 @@ export class FavoritePopupView extends React.Component<{}, IFavoritePopupViewSta
             this.setState({ favoriteInfoAry: failed });
         })
         .finally(() => {
-            if (DualViewDoc.currentDoc) {
-                this.setState({ favoriteInfoAry: DualViewDoc.favoriteInfoAry });
+            if (documentManager.currentDoc) {
+                this.setState({ favoriteInfoAry: documentManager.favoriteInfoAry });
             }
         });
     }
@@ -497,8 +531,8 @@ export class FavoritePopupView extends React.Component<{}, IFavoritePopupViewSta
                 this.setState({ favoriteInfoAry: failed });
             })
             .finally(() => {
-                if (DualViewDoc.currentDoc) {
-                    this.setState({ favoriteInfoAry: DualViewDoc.favoriteInfoAry });
+                if (documentManager.currentDoc) {
+                    this.setState({ favoriteInfoAry: documentManager.favoriteInfoAry });
                 }
             });
         } else if (e.key === 'Escape') {
@@ -515,8 +549,8 @@ export class FavoritePopupView extends React.Component<{}, IFavoritePopupViewSta
     private onSearchInput(e: any) {
         const val = e.target.value;
         DualViewDoc.getFavoriteInfo(val).then((arg: any) => {
-             if (DualViewDoc.currentDoc) {
-                this.setState({ favoriteInfoAry: DualViewDoc.favoriteInfoAry });
+             if (documentManager.currentDoc) {
+                this.setState({ favoriteInfoAry: documentManager.favoriteInfoAry });
             }
         });
     }
@@ -797,7 +831,6 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
 
     render(): React.ReactNode {
         let key = 0;
-        const bigLabel = 'Address: Hex/decimal constant or expression';
         const estimatedWidth = 500;
         const width = this.state.renderedWidth || estimatedWidth;
         const left = Math.max(0, Math.min(this.state.clientX, window.innerWidth - width - 20));
@@ -847,27 +880,27 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                         value={this.state.settings.expr}
                         onKeyDown={this.onKeyDownFunc}
                     >
-                        {bigLabel}
+                        Address: Hex/decimal constant or expression
                     </VSCodeTextField>
                     <br key={key++}></br>
                     <VSCodeTextField
                         key={key++}
-                        name='displayName'
+                        name='size'
                         type='text'
                         style={{ width: '100%' }}
-                        ref={this.displayNameRef}
-                        value={this.state.settings.displayName}
+                        ref={this.sizeRef}
+                        value={this.state.settings.size}
                         onKeyDown={this.onKeyDownFunc}
                     >
-                        Display Name
+                        Size: Hex/decimal constant or expression
                     </VSCodeTextField>
                     <br key={key++}></br>
                     <div key={key++} className='dialog-row'>
-                        <div key={key++} className='dropdown-label-div'>
+                        <div key={key++} className='dropdown-label-div' style={{ width: '50%' }}>
                             <label key={key++} className='dropdown-label'>
                                 Format
                             </label>
-                            <VSCodeDropdown key={key++} value={this.format} onChange={this.onFormatChangeFunc}>
+                            <VSCodeDropdown key={key++} value={this.format} onChange={this.onFormatChangeFunc} style={{ flex: 1 }}>
                                 <VSCodeOption key={key++} value='1-byte'>
                                     1-Byte
                                 </VSCodeOption>
@@ -882,11 +915,11 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                                 </VSCodeOption>
                             </VSCodeDropdown>
                         </div>
-                        <div key={key++} className='dropdown-label-div'>
+                        <div key={key++} className='dropdown-label-div' style={{ width: '50%' }}>
                             <label key={key++} className='dropdown-label'>
                                 Endianness
                             </label>
-                            <VSCodeDropdown key={key++} value={this.endian} onChange={this.onEndiannessChangeFunc}>
+                            <VSCodeDropdown key={key++} value={this.endian} onChange={this.onEndiannessChangeFunc} style={{ flex: 1 }}>
                                 <VSCodeOption key={key++} value='little'>
                                     Little
                                 </VSCodeOption>
@@ -895,7 +928,23 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                                 </VSCodeOption>
                             </VSCodeDropdown>
                         </div>
-                        <div key={key++} className='dropdown-label-div'>
+                    </div>
+                    <div key={key++} className='dialog-row'>
+                        <div key={key++} className='dropdown-label-div' style={{ width: '50%' }}>
+                            <label key={key++} className='dropdown-label'>
+                                Name
+                            </label>
+                            <VSCodeTextField
+                                key={key++}
+                                name='displayName'
+                                type='text'
+                                style={{ flex: 1 }}
+                                ref={this.displayNameRef}
+                                value={this.state.settings.displayName}
+                                onKeyDown={this.onKeyDownFunc}
+                            ></VSCodeTextField>
+                        </div>
+                        <div key={key++} className='dropdown-label-div' style={{ width: '50%' }}>
                             <label key={key++} className='dropdown-label'>
                                 &nbsp;#Columns
                             </label>
@@ -904,28 +953,15 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                                 name='column'
                                 type='text'
                                 value={this.column}
+                                style={{ flex: 1, minWidth: '2ch' }}
                                 onChange={this.onColumnsChangeFunc}
                                 onKeyDown={this.onKeyDownFunc}
                             ></VSCodeTextField>
                         </div>
                     </div>
-                    <div key={key++} className='dropdown-label-div' style={{ width: '100%' }}>
-                        <label key={key++} className='dropdown-label'>
-                            Memory Size
-                        </label>
-                        <VSCodeTextField
-                            key={key++}
-                            name='size'
-                            type='text'
-                            style={{ width: '78%' }}
-                            ref={this.sizeRef}
-                            value={this.state.settings.size}
-                            onKeyDown={this.onKeyDownFunc}
-                        ></VSCodeTextField>
-                    </div>
                     <br key={key++}></br>
                     <div key={key++} style={{ marginTop: '10px' }}>
-                        <VSCodeDropdown key={key++} style={{ width: '25ch' }}>
+                        <VSCodeDropdown key={key++} style={{ width: '20ch' }}>
                             <VSCodeOption key={key++} value='view'>
                                 Apply To: This View
                             </VSCodeOption>
