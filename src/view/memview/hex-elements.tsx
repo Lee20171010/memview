@@ -216,7 +216,7 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
             } catch {
                 console.error('HexCellValue.selectItem failed');
             }
-            document.addEventListener('keydown', this.onKeyDownFunc, false);
+            // document.addEventListener('keydown', this.onKeyDownFunc, false);
         }
         HexCellValue.lastGoodValue = this.valueStr();
         HexCellValue.lastOrigValue = HexCellValue.lastGoodValue;
@@ -228,7 +228,7 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
         HexCellValue.dbgPrints && console.log(`onBlur: new = ${ev.currentTarget.innerText}`);
         if (ev.currentTarget && this.editable()) {
             // console.log('onBlur: ' + ev.currentTarget.innerText);
-            document.removeEventListener('keydown', this.onKeyDownFunc, false);
+            // document.removeEventListener('keydown', this.onKeyDownFunc, false);
             HexCellValue.revertEditsInDOM(HexCellValue.currentDOMElt, HexCellValue.newGoodValue || this.valueStr());
         }
         HexCellValue.currentDOMElt = undefined;
@@ -276,6 +276,7 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
                 onBlur={this.onBlurFunc}
                 onInput={this.onInputFunc}
                 onMouseDown={this.onMouseDownFunc}
+                onKeyDown={this.onKeyDownFunc}
             >
                 {this.valueStr()}
             </span>
