@@ -101,7 +101,7 @@ export class DocumentManager {
             this.currentDoc = undefined;
             while (this.currentDocStack.length) {
                 const oldId = this.currentDocStack.pop();
-                if (oldId && this.allDocuments[oldId]) {
+                if (oldId && oldId !== id && this.allDocuments[oldId]) {
                     this.setCurrentDoc(oldId);
                     break;
                 }

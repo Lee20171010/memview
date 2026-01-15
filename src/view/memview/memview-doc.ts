@@ -450,9 +450,18 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         });
     }
 
+    private static readonly lastSavePathKey = 'memview.lastSavePath';
+
     public dumpAllToFile(doc: DualViewDoc): Promise<void> {
         return new Promise<void>((resolve) => {
+            const lastUriStr = this.context.workspaceState.get<string>(MemViewPanelProvider.lastSavePathKey);
+            let defaultUri: vscode.Uri | undefined;
+            if (lastUriStr) {
+                defaultUri = vscode.Uri.file(lastUriStr);
+            }
+
             const opts: vscode.SaveDialogOptions = {
+                defaultUri: defaultUri,
                 filters: {
                     'Text or Binary files': ['*.txt', '*.dat', '*.bin'],
                 },
@@ -461,6 +470,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             };
             vscode.window.showSaveDialog(opts).then((uri) => {
                 if (uri) {
+                    this.context.workspaceState.update(MemViewPanelProvider.lastSavePathKey, uri.fsPath);
                     const ext = uri.fsPath.toLowerCase().split('.').pop();
                     const isBinary = ext === 'bin';
                     const stream = fs.createWriteStream(uri.fsPath);
