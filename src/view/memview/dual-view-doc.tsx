@@ -200,17 +200,20 @@ export class DocumentManager {
         for (const [_id, doc] of Object.entries(this.allDocuments)) {
             const oldStatus = doc.sessionStatus;
             if (doc.sessionId !== sessionId) {
-                if (
-                    (status === 'started' || status === 'stopped') &&
-                    (sessionName === doc.sessionName || !doc.sessionName) &&
-                    (doc.wsFolder === wsFolder || !doc.wsFolder)
-                ) {
+                // Adoption logic check
+                const nameMatch = (sessionName === doc.sessionName || !doc.sessionName);
+                const isInvalidSessionFolder = !wsFolder || wsFolder === '.';
+                const isDocFolderInvalid = !doc.wsFolder || doc.wsFolder === '.';
+                const folderMatch = isInvalidSessionFolder || isDocFolderInvalid || (doc.wsFolder === wsFolder);
+                const statusMatch = (status === 'started' || status === 'stopped');
+                
+                if (statusMatch && nameMatch && folderMatch) {
                     // We found an orphaned document and a new debug session started that can now own it
                     debug &&
                         console.log(`New debug session ${sessionId} => ${doc.sessionId} webview = ${doc.inWebview}`);
                     doc.sessionId = sessionId;
                     doc.sessionName = sessionName;
-                    doc.wsFolder = wsFolder;
+                    doc.wsFolder = isInvalidSessionFolder && doc.wsFolder ? doc.wsFolder : wsFolder; // Keep old valid folder if new is invalid
                     doc.sessionStatus = DocDebuggerStatus.Busy;
                     doc.memory.deleteHistory();
                     if (status === 'stopped') {

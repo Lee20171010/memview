@@ -60,6 +60,21 @@ function doStartup() {
     globalsInit();
     documentManager.init(new MemoryInterfaceFromVSCode());
 
+    // When the tab becomes visible again (user clicks on it), we need to check if we missed any
+    // events while we were hidden. The extension may have sent us messages but if we were
+    // suspended, we might have dropped them.
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            const msg: ICmdBase = {
+                type: CmdType.GetDebuggerSessions,
+                seq: 0,
+                sessionId: '',
+                docId: ''
+            };
+            vscodePostCommand(msg);
+        }
+    });
+
     const promises = [];
     const msg: ICmdBase = {
         type: CmdType.GetDocuments,
