@@ -1194,7 +1194,7 @@ class DebuggerIF implements IMemoryInterfaceCommands {
                 const buf = Buffer.from(result.data, 'base64');
                 const ary = new Uint8Array(buf);
                 return resolve(ary);
-            }), ((e: any) => {
+            }, (e: any) => {
                 debugConsoleMessage(e, arg);
                 return resolve(new Uint8Array(0));
             });
@@ -1225,7 +1225,7 @@ class DebuggerIF implements IMemoryInterfaceCommands {
             session.session.customRequest('setExpression', memArg).then((result) => {
                 session.session.customRequest('sendInvalidate', { areas: ['variables'], stackFrameId: session.lastFrameId });
                 return resolve(result.value);
-            }), ((e: any) => {
+            }, (e: any) => {
                 console.error('Error while setExpression', e);
                 return resolve('0');
             });
