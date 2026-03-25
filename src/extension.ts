@@ -1,9 +1,33 @@
 
 import * as vscode from 'vscode';
 import querystring from 'node:querystring';
-// import * as path from 'path';
+import * as path from 'path';
+import * as fs from 'fs';
 import { DebugTrackerFactory } from './view/memview/debug-tracker';
 import { /*MemviewDocumentProvider, */ MemViewPanelProvider } from './view/memview/memview-doc';
+
+export const traceChannel = vscode.window.createOutputChannel("MemoryView Trace");
+let traceLogPath = '';
+
+export function trace(msg: string) {
+    const formattedMsg = `[${new Date().toISOString()}] ${msg}`;
+    traceChannel.appendLine(formattedMsg);
+
+    // 寫入實體檔案防截斷
+    if (!traceLogPath) {
+        const wsFolders = vscode.workspace.workspaceFolders;
+        if (wsFolders && wsFolders.length > 0) {
+            traceLogPath = path.join(wsFolders[0].uri.fsPath, 'memview_trace.log');
+        } else {
+            traceLogPath = path.join(__dirname, 'memview_trace.log');
+        }
+    }
+    try {
+        fs.appendFileSync(traceLogPath, formattedMsg + '\n');
+    } catch (e) {
+        // ignore string log write errors to not crash the extension
+    }
+}
 
 /**
  * It is best to add a new memory view when a debug session is active and in stopped
@@ -127,6 +151,12 @@ export class MemViewExtension {
                 } else {
                     vscode.window.showErrorMessage('Cannot execute this command as the debug-tracker-vscode extension did not connect properly');
                 }
+            }),
+            vscode.commands.registerCommand('mcu-debug.memory-view.dumpDebugState', () => {
+                MemViewPanelProvider.dumpDebugState();
+            }),
+            vscode.commands.registerCommand('mcu-debug.memory-view.dumpFrontendState', () => {
+                MemViewPanelProvider.dumpFrontendState();
             }),
             vscode.workspace.onDidChangeConfiguration(this.onSettingsChanged.bind(this)),
 

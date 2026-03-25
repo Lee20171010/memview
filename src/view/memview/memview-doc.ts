@@ -3,7 +3,7 @@ import querystring from 'node:querystring';
 import { uuid } from 'uuidv4';
 import * as fs from 'fs';
 import { DocDebuggerStatus, DualViewDoc, DocumentManager } from './dual-view-doc';
-import { MemViewExtension, MemviewUriOptions } from '../../extension';
+import { MemViewExtension, MemviewUriOptions, trace } from '../../extension';
 import {
     IWebviewDocXfer, ICmdGetMemory, IMemoryInterfaceCommands, ICmdBase, CmdType,
     IMessage, ICmdSetMemory, ICmdSetByte, ICmdSetExpr, IMemviewDocumentOptions, ITrackedDebugSessionXfer,
@@ -224,6 +224,52 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
     public static favoritesManager: FavoritesManager;
     public manager: DocumentManager;
     public isEnabled: boolean = false;
+
+    public static async dumpDebugState() {
+        const stateDump = {
+            timestamp: new Date().toISOString(),
+            providers: MemViewPanelProvider.Providers.map(p => ({
+                isEnabled: p.isEnabled,
+                hasWebview: !!p.webviewView,
+                allDocuments: Object.entries(p.manager?.allDocuments || {}).map(([id, doc]) => ({
+                    docId: id,
+                    displayName: doc.displayName,
+                    sessionId: doc.sessionId,
+                    sessionStatus: doc.sessionStatus,
+                    baseAddress: doc.baseAddress?.toString(),
+                    maxBytes: doc.maxBytes?.toString(),
+                    pagesLength: (doc.memory as any)?.pages?.length,
+                    staleData: (doc.memory as any)?.pages?.map((pg: any) => pg?.stale),
+                    isReady: doc.isReady,
+                    startAddressStale: (doc as any).startAddressStale,
+                    maxBytesStale: (doc as any).maxBytesStale
+                })),
+                currentDocId: p.manager?.currentDoc?.docId,
+                dbgSessions: (DebuggerTrackerLocal as any).sessionsById ? Object.keys((DebuggerTrackerLocal as any).sessionsById) : []
+            }))
+        };
+
+        const doc = await vscode.workspace.openTextDocument({
+            content: JSON.stringify(stateDump, null, 2),
+            language: 'json'
+        });
+        await vscode.window.showTextDocument(doc);
+    }
+
+    public static async dumpFrontendState() {
+        for (const p of MemViewPanelProvider.Providers) {
+            const webview = p.webviewView?.webview || (p as any).panel?.webview;
+            if (webview) {
+                const msg: IMessage = {
+                    type: 'command',
+                    seq: 0,
+                    command: CmdType.DumpFrontendState,
+                    body: {}
+                };
+                webview.postMessage(msg);
+            }
+        }
+    }
 
     public static register(context: vscode.ExtensionContext) {
         MemViewPanelProvider.context = context;
@@ -573,6 +619,9 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
     }
 
     private handleMessage(msg: any) {
+        if (msg?.command !== CmdType.TraceLog) {
+            trace(`[Backend] handleMessage: type=${msg?.type} command=${msg?.command || msg?.body?.type}`);
+        }
         // console.log('MemViewPanelProvider.onDidReceiveMessage', msg);
         switch (msg?.type) {
             case 'command': {
@@ -584,17 +633,25 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                         break;
                     }
                     case CmdType.GetStartAddress: {
+                        trace(`[Backend] GetStartAddress body docId: ${body.docId}`);
                         const doc = this.manager.getDocumentById(body.docId);
                         const memCmd = (body as ICmdGetStartAddress);
                         if (doc) {
                             const oldAddr = doc.startAddress;
+                            trace(`[Backend] Calling doc.getStartAddress for ${doc.docId}...`);
                             doc.getStartAddress().then((v) => {
+                                trace(`[Backend] doc.getStartAddress returned: ${v}`);
                                 if (oldAddr !== v) {
                                     this.updateWebviewDocs();
                                 }
+                                trace(`[Backend] Posting response for GetStartAddress...`);
                                 this.postResponse(body, v.toString());
+                            }).catch(err => {
+                                trace(`[Backend] doc.getStartAddress error! ${err}`);
+                                this.postResponse(body, memCmd.def);
                             });
                         } else {
+                            trace(`[Backend] GetStartAddress doc NOT FOUND for docId: ${body.docId}`);
                             this.postResponse(body, memCmd.def);
                         }
                         break;
@@ -617,12 +674,19 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                     }
                     case CmdType.GetMemory: {
                         const doc = this.manager.getDocumentById(body.docId);
+                        const memCmd = (body as ICmdGetMemory);
+                        trace(`[Backend] CmdType.GetMemory received: docId=${body.docId}, addr=${memCmd.addr}, count=${memCmd.count}`);
                         if (doc) {
-                            const memCmd = (body as ICmdGetMemory);
+                            trace(`[Backend] Fetching memory from doc for GetMemory...`);
                             doc.getMemoryPage(BigInt(memCmd.addr), memCmd.count).then((b) => {
+                                trace(`[Backend] Returning memory payload to frontend for GetMemory (size: ${b?.length})`);
                                 this.postResponse(body, b);
+                            }).catch(err => {
+                                trace(`[Backend] Error fetching memory: ${err}`);
+                                this.postResponse(body, new Uint8Array(0));
                             });
                         } else {
+                            trace(`[Backend] GetMemory failed: Document not found.`);
                             this.postResponse(body, new Uint8Array(0));
                         }
                         break;
@@ -673,6 +737,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                                 break;
                             }
                             case 'refresh': {
+                                trace(`[Backend] CmdType.ButtonClick: 'refresh' received. Marking docs stale and sending SetDocuments.`);
                                 this.manager.markAllDocsStale();
                                 this.updateWebviewDocs();
                                 break;
@@ -831,6 +896,17 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                         console.error('handleMessage: Unknown command', body);
                         break;
                     }
+                }
+                break;
+            }
+            case 'notice': {
+                if (msg.command === CmdType.TraceLog) {
+                    trace(`[Frontend] ${msg.body}`);
+                } else if (msg.command === CmdType.DumpFrontendState) {
+                    vscode.workspace.openTextDocument({
+                        content: JSON.stringify(msg.body, null, 2),
+                        language: 'json'
+                    }).then(doc => vscode.window.showTextDocument(doc));
                 }
                 break;
             }
@@ -1181,6 +1257,7 @@ class DebuggerIF implements IMemoryInterfaceCommands {
         return MemViewPanelProvider.getExprResult(session.session, arg.expr);
     }
     getMemory(arg: ICmdGetMemory): Promise<Uint8Array> {
+        trace(`[Backend] DAP readMemory requested: addr=${arg.addr}, count=${arg.count}`);
         const memArg: DebugProtocol.ReadMemoryArguments = {
             memoryReference: arg.addr,
             count: arg.count
@@ -1188,13 +1265,16 @@ class DebuggerIF implements IMemoryInterfaceCommands {
         return new Promise<Uint8Array>((resolve) => {
             const session = DebuggerTrackerLocal.getSessionById(arg.sessionId);
             if (!session || (session.status !== DebugSessionStatus.Stopped)) {
+                trace(`[Backend] DAP readMemory aborted: session=${!!session}, status=${session?.status}`);
                 return resolve(new Uint8Array(0));
             }
             session.session.customRequest('readMemory', memArg).then((result) => {
                 const buf = Buffer.from(result.data, 'base64');
                 const ary = new Uint8Array(buf);
+                trace(`[Backend] DAP readMemory success: length=${ary.length}`);
                 return resolve(ary);
             }, (e: any) => {
+                trace(`[Backend] DAP readMemory failed at ${arg.addr}: ${e}`);
                 debugConsoleMessage(e, arg);
                 return resolve(new Uint8Array(0));
             });

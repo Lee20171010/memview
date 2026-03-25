@@ -23,7 +23,9 @@ export enum CmdType {
     AddFavorite = 'AddFavorite',
     DeleteFavorite = 'DeleteFavorite',
     ImportFavorites = 'ImportFavorites',
-    ExportFavorites = 'ExportFavorites'
+    ExportFavorites = 'ExportFavorites',
+    DumpFrontendState = 'DumpFrontendState',
+    TraceLog = 'TraceLog'
 }
 
 export interface IMessage {

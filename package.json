@@ -64,6 +64,16 @@
                 "category": "MemoryView",
                 "command": "mcu-debug.memory-view.uriTest",
                 "title": "Test URI opening mechanism"
+            },
+            {
+                "command": "mcu-debug.memory-view.dumpDebugState",
+                "title": "MemoryView: Dump Debug State",
+                "category": "MemoryView"
+            },
+            {
+                "command": "mcu-debug.memory-view.dumpFrontendState",
+                "title": "MemoryView: Dump Frontend Debug State",
+                "category": "MemoryView"
             }
         ],
         "customEditors": [

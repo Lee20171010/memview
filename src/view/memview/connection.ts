@@ -1,4 +1,4 @@
-import { ICmdBase } from './shared';
+import { ICmdBase, CmdType } from './shared';
 
 export interface IVsCodeApi {
     postMessage(msg: unknown): void;
@@ -42,6 +42,15 @@ export function vscodePostCommand(msg: ICmdBase): Promise<any> {
 export function vscodePostCommandNoResponse(msg: ICmdBase) {
     msg.seq = getSeqNumber();
     vscodeApi?.postMessage({ type: 'command', body: msg });
+}
+
+export function frontTrace(msg: string) {
+    vscodeApi?.postMessage({
+        type: 'notice',
+        seq: 0,
+        command: CmdType.TraceLog,
+        body: msg
+    });
 }
 
 export function getPendingRequest(seq: number): MsgResponse | undefined {

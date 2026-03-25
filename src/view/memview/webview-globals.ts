@@ -18,6 +18,7 @@ export function globalsInit() {
     }
 
     addMessageHandler(CmdType.SetDocuments, (body) => {
+        frontTrace(`[Frontend] Received SetDocuments (probably from Refresh/Update). Restoring serializable state and emitting 'any' event.`);
         documentManager.restoreSerializableAll(body);
         // We also need to emit an event to ensure UI updates if restoreSerializableAll didn't emit enough
         // But restoreSerializableAll calls updateFromSerializable which emits CurrentDoc event.
@@ -25,13 +26,47 @@ export function globalsInit() {
         // For now, let's assume updateFromSerializable is enough.
         documentManager.globalEventEmitter.emit('any', {});
     });
+
+    addMessageHandler(CmdType.DumpFrontendState, () => {
+        try {
+            const doc = documentManager.currentDoc;
+            const state = {
+                timestamp: new Date().toISOString(),
+                location: 'Frontend Webview',
+                currentDocId: doc?.docId,
+                currentDocSessionId: doc?.sessionId,
+                currentDocStatus: doc?.sessionStatus,
+                currentDocBaseInfo: {
+                    baseAddress: doc?.baseAddress?.toString(),
+                    maxBytes: doc?.maxBytes?.toString(),
+                    pagesLength: (doc?.memory as any)?.pages?.length,
+                    staleData: (doc?.memory as any)?.pages?.map((p: any) => p.stale),
+                    isReady: doc?.isReady
+                },
+                docsCount: Object.keys(documentManager.allDocuments).length,
+                pendingRequests: Object.keys((doc as any)?.pendingRequests || {}),
+                pendingEvents: (doc as any)?.pendingEvents?.map((e: any) => e.type),
+                statusChangeTimeoutActive: !!(doc as any)?.statusChangeTimeout
+            };
+            const msg: IMessage = {
+                type: 'notice',
+                seq: 0,
+                command: CmdType.DumpFrontendState,
+                body: state
+            };
+            myGlobals.vscode?.postMessage(msg);
+        } catch (e) {
+            console.error('Failed to dump frontend state', e);
+        }
+    });
+
 }
 
 import {
     atom,
     RecoilState,
 } from 'recoil';
-import { setVsCodeApi, vscodePostCommand, vscodePostCommandNoResponse, getPendingRequest, removePendingRequest } from './connection';
+import { setVsCodeApi, vscodePostCommand, vscodePostCommandNoResponse, getPendingRequest, removePendingRequest, frontTrace } from './connection';
 import { DualViewDocGlobalEventType, IDualViewDocGlobalEventArg, DocumentManager } from './dual-view-doc';
 import { MsgResponse, ICmdBase, IMessage, CmdType } from './shared';
 import { WebviewDebugTracker } from './webview-debug-tracker';
@@ -80,6 +115,9 @@ export { vscodePostCommand, vscodePostCommandNoResponse };
 
 function vscodeReceiveMessage(event: any) {
     const data = event.data as IMessage;
+    if (data.command !== CmdType.TraceLog) {
+        frontTrace(`vscodeReceiveMessage: type=${data.type}, command=${data.command || (data.body as any)?.type}`);
+    }
     if (data.type === 'response') {
         recieveResponseFromVSCode(data);
     } else if (data.type === 'command') {
@@ -127,6 +165,9 @@ function recieveResponseFromVSCode(response: IMessage) {
                 break;
             }
             default: {
+                if (response.command === CmdType.GetMemory) {
+                    frontTrace(`[Frontend] Received response for GetMemory (seq=${seq}, data length=${(response.body as Uint8Array)?.length}). Resolving pending promise.`);
+                }
                 pending.resolve(response.body);
                 break;
             }

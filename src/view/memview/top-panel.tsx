@@ -9,6 +9,7 @@ import {
     VSCodeTextField
 } from '@vscode/webview-ui-toolkit/react';
 import { vscodePostCommandNoResponse, documentManager, myGlobals } from './webview-globals';
+import { frontTrace } from './connection';
 import {
     CmdButtonName,
     CmdType,
@@ -136,6 +137,7 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
 
     private onClickRefreshFunc = this.onClickRefresh.bind(this);
     private onClickRefresh() {
+        frontTrace(`[Frontend] User clicked 'Refresh' button`);
         vscodePostCommandNoResponse(this.createCmd('refresh'));
     }
 

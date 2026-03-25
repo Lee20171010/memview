@@ -9,7 +9,7 @@
  */
 
 
-import { vscodePostCommand, vscodePostCommandNoResponse, isInWebview } from './connection';
+import { vscodePostCommand, vscodePostCommandNoResponse, isInWebview, frontTrace } from './connection';
 import { Buffer } from 'buffer';
 import events from 'events';
 import {
@@ -195,6 +195,7 @@ export class DocumentManager {
         sessionName: string,
         wsFolder: string
     ) {
+        frontTrace(`debuggerStatusChanged: ${sessionId}, status=${status}, sessionName=${sessionName}`);
         const debug = false;
         debug && console.log(sessionId, status, sessionName, wsFolder);
         for (const [_id, doc] of Object.entries(this.allDocuments)) {
@@ -357,6 +358,7 @@ export class DualViewDoc {
 
 
     updateFromSerializable(info: IWebviewDocXfer) {
+        frontTrace(`[Frontend] updateFromSerializable: diffing docId=${this.docId}, baseStale=${info.baseAddressStale}`);
         const oldStartAddress = this.startAddress;
         const oldPageSize = this.PageSize;
         this.setAddresses(BigInt(info.startAddress), BigInt(info.maxBytes));
@@ -381,6 +383,7 @@ export class DualViewDoc {
         } else if (this.startAddress !== oldStartAddress || (oldPageSize && this.PageSize !== oldPageSize)) {
             this.memory = new MemPages(this);
         } else if (this.startAddressStale || this.maxBytesStale) {
+            frontTrace(`[Frontend] startAddress or maxBytes are stale. Calling this.memory.markAllStale()`);
             this.memory.markAllStale();
         }
 
@@ -545,6 +548,7 @@ export class DualViewDoc {
         if (!ary) {
             ary = new Uint8Array(0); // TODO: This should not happen
         } else if (ary.length > 0) {
+            frontTrace(`[Frontend] getMemoryPage: received array with length=${ary.length}, calling this.memory.setPage for addr=${addr}`);
             this.memory.setPage(addr, ary);
         }
         return Promise.resolve(ary);
@@ -574,6 +578,7 @@ export class DualViewDoc {
     }
 
     public markAsStale() {
+        frontTrace(`markAsStale called for docId=${this.docId}`);
         this.startAddressStale = true;
         this.maxBytesStale = true;
         this.memory.markAllStale();
@@ -584,8 +589,10 @@ export class DualViewDoc {
         const key = addr.toString();
         const pendingPromise = this.pendingRequests[key];
         if (pendingPromise) {
+            frontTrace(`getMemoryPageFromSource: already pending for addr=${key}`);
             return pendingPromise;
         }
+        frontTrace(`getMemoryPageFromSource: starting new request for addr=${key}, nBytes=${nBytes}`);
         // eslint-disable-next-line no-async-promise-executor
         const promise = new Promise<Uint8Array>(async (resolve) => {
             try {
@@ -614,9 +621,11 @@ export class DualViewDoc {
                 };
 
                 const ret = await this.manager.memoryIF!.getMemory(msg);
+                frontTrace(`getMemoryPageFromSource: successfully fetched addr=${key}, length=${ret.length}`);
                 resolve(ret);
             } catch (e) {
                 console.error('Error getting memory address or value', e);
+                frontTrace(`getMemoryPageFromSource: failed for addr=${key}: ${e}`);
                 resolve(new Uint8Array(0));
             }
             delete this.pendingRequests[key];
@@ -815,6 +824,7 @@ export class DualViewDoc {
         // a -> b -> a as not a state change if it happens too rapidly. May also
         // save flickering if we debounce.
         if (this.statusChangeTimeout) {
+            frontTrace(`emitGlobalEvent: Canceling previous event ${this.pendingArg?.type} for new event ${type}`);
             debug && console.log('emitGlobalEvent Canceling event', this.pendingArg);
             clearTimeout(this.statusChangeTimeout);
         }
@@ -1068,9 +1078,11 @@ class MemPages {
 
     setPage(addr: bigint, ary: Uint8Array, dbgCaller = 'MemPages.getValue') {
         if (this.parentDoc.getMemoryRaw() !== this) {
+            frontTrace(`setPage: ignored because MemPages instance is stale for addr=${addr}`);
             // This MemPages instance is stale (replaced by a new one), so ignore updates
             return;
         }
+        frontTrace(`setPage: addr=${addr.toString()}, length=${ary.length}, dbgCaller=${dbgCaller}`);
         // eslint-disable-next-line no-constant-condition
         if (false) {
             const addrStr = hexFmt64(addr);
