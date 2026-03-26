@@ -214,6 +214,7 @@ export class DocumentManager {
                     doc.wsFolder = wsFolder;
                     doc.sessionStatus = DocDebuggerStatus.Busy;
                     doc.memory.deleteHistory();
+                    doc.isReady = status === 'stopped';
                     if (status === 'stopped') {
                         doc.markAsStale();
                         doc.sessionStatus = DocDebuggerStatus.Stopped;
@@ -338,6 +339,10 @@ export class DualViewDoc {
         this.wsFolder = info.wsFolder;
         this.sessionId = info.sessionId;
         this.sessionName = info.sessionName;
+        if (info.sessionStatus) {
+            this.sessionStatus = info.sessionStatus as DocDebuggerStatus;
+            this.isReady = this.sessionStatus === DocDebuggerStatus.Stopped;
+        }
         this.isReadonly = info.isReadOnly;
         this.inWebview = DualViewDoc.InWebview();
         this.startAddressStale = info.baseAddressStale;
@@ -372,6 +377,10 @@ export class DualViewDoc {
         this.wsFolder = info.wsFolder;
         this.sessionId = info.sessionId;
         this.sessionName = info.sessionName;
+        if (info.sessionStatus) {
+            this.sessionStatus = info.sessionStatus as DocDebuggerStatus;
+            this.isReady = this.sessionStatus === DocDebuggerStatus.Stopped;
+        }
         this.isReadonly = info.isReadOnly;
         this.startAddressStale = info.baseAddressStale;
         this.maxBytesStale = info.maxBytesStale;
@@ -859,6 +868,7 @@ export class DualViewDoc {
             docId: this.docId,
             sessionId: this.sessionId,
             sessionName: this.sessionName,
+            sessionStatus: this.sessionStatus,
             displayName: this.displayName,
             expr: this.expr,
             endian: this.endian,

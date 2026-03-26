@@ -314,20 +314,19 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         
         if (viewType === 'memory-view.memoryView') {
             this.isEnabled = true;
-        }
-        
-        try {
-            const ver = context.workspaceState.get('version');
-            if (ver === MemViewPanelProvider.stateVersion) {
-                const obj = context.workspaceState.get(this.stateKeyName);
-                const saved = obj as IWebviewDocXfer[];
-                if (saved) {
-                    this.manager.restoreSerializableAll(saved);
+            try {
+                const ver = context.workspaceState.get('version');
+                if (ver === MemViewPanelProvider.stateVersion) {
+                    const obj = context.workspaceState.get(this.stateKeyName);
+                    const saved = obj as IWebviewDocXfer[];
+                    if (saved) {
+                        this.manager.restoreSerializableAll(saved);
+                    }
                 }
             }
-        }
-        catch (e) {
-            this.manager.restoreSerializableAll([]);
+            catch (e) {
+                this.manager.restoreSerializableAll([]);
+            }
         }
     }
 
@@ -771,6 +770,27 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                                 const provider = MemViewPanelProvider.Providers.find(p => !p.isEnabled);
                                 if (provider) {
                                     provider.isEnabled = true;
+
+                                    try {
+                                        const ver = MemViewPanelProvider.context.workspaceState.get('version');
+                                        if (ver === MemViewPanelProvider.stateVersion) {
+                                            const obj = MemViewPanelProvider.context.workspaceState.get(provider.stateKeyName);
+                                            const saved = obj as IWebviewDocXfer[];
+                                            if (saved) {
+                                                provider.manager.restoreSerializableAll(saved);
+                                            }
+                                        }
+                                    } catch (e) {
+                                        provider.manager.restoreSerializableAll([]);
+                                    }
+
+                                    const allSessions = DebuggerTrackerLocal.getCurrentSessionsSerializable();
+                                    for (const session of allSessions) {
+                                        provider.manager.debuggerStatusChanged(session.sessionId, session.status, session.sessionName, session.wsFolder);
+                                    }
+
+                                    provider.updateWebviewDocs();
+
                                     const contextKey = provider.getContextKey();
                                     if (contextKey) {
                                         vscode.commands.executeCommand('setContext', contextKey, true);

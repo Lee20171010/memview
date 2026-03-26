@@ -147,6 +147,7 @@ export interface IWebviewDocXfer {
     docId: string;
     sessionId: string;          // The debug session ID, also the document Id
     sessionName: string;        // The debug session name
+    sessionStatus?: string;     // The runtime debugger status
     displayName: string;
     expr: string;
     size: string;

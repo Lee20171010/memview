@@ -10,7 +10,7 @@ import /*
     useSetRecoilState
     */
 'recoil';
-import { DualViewDoc, DummyByte, IDualViewDocGlobalEventArg } from './dual-view-doc';
+import { DualViewDoc, DummyByte, IDualViewDocGlobalEventArg, DualViewDocGlobalEventType } from './dual-view-doc';
 import { documentManager } from './webview-globals';
 import { IMemValue, UnknownDocId } from './shared';
 import { hexFmt64, hexFmt64 as _hexFmt64 } from './utils';
@@ -527,16 +527,19 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
     private onGlobalEvent(arg: IDualViewDocGlobalEventArg) {
         // console.log(`In HexDataRow.onGlobalEvent() ${_hexFmt64(this.props.address)}`);
         let modified = false;
-        if (arg.sessionId !== this.sessionId) {
-            this.sessionId = arg.sessionId || this.sessionId;
+        if (arg.sessionId !== undefined && arg.sessionId !== this.sessionId) {
+            this.sessionId = arg.sessionId;
             modified = true;
         }
-        if (arg.docId !== this.docId) {
-            this.docId = arg.docId || this.docId;
+        if (arg.docId !== undefined && arg.docId !== this.docId) {
+            this.docId = arg.docId;
             modified = true;
         }
-        if (arg.sessionStatus !== this.sessionStatus) {
-            this.sessionStatus = arg.sessionStatus || this.sessionStatus;
+        if (arg.sessionStatus !== undefined && arg.sessionStatus !== this.sessionStatus) {
+            this.sessionStatus = arg.sessionStatus;
+            modified = true;
+        }
+        if (arg.type === DualViewDocGlobalEventType.CurrentDoc || arg.type === DualViewDocGlobalEventType.DebuggerStatus) {
             modified = true;
         }
         if (modified) {
