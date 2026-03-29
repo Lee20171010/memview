@@ -302,6 +302,8 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
             enableProps = enableProps || doc.docId !== UnknownDocId;
             count++;
         }
+        const currentSessionName = documentManager.currentDoc?.sessionName;
+        const sessionText = currentSessionName && currentSessionName !== UnknownDocId ? ` Session: ${currentSessionName}` : '';
         const isModified = documentManager.currentDoc?.isModified;
         const isStopped = this.state.sessionStatus === DocDebuggerStatus.Stopped;
         const editProps: IViewSettingsProps = {
@@ -385,6 +387,7 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
                     <span className='codicon codicon-gear' title='Edit global settings. Coming soon'></span>
                 </VSCodeButton>
                 <span className='debug-status'>Status: {status}</span>
+                <span className='debug-status'>{sessionText}</span>
                 <VSCodeButton
                     key={key++}
                     appearance='icon'
